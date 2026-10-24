@@ -1,0 +1,18 @@
+import { cn } from '@/lib/utils';
+
+const TONES = {
+  neutral: 'border-line text-ink',
+  attention: 'border-lifecycle-amended/50 text-lifecycle-amended',
+  critical: 'border-lifecycle-cancelled/50 text-lifecycle-cancelled',
+  quiet: 'border-line text-mutedink',
+};
+
+export default function KpiCard({ label, value, note, tone = 'neutral' }) {
+  return (
+    <div className={cn('rounded-md border bg-white px-4 py-3 shadow-sm', TONES[tone])}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-mutedink">{label}</p>
+      <p className="anchor-mono mt-1 text-[26px] font-semibold leading-none">{value}</p>
+      {note && <p className="mt-1.5 text-[11.5px] text-mutedink">{note}</p>}
+    </div>
+  );
+}
