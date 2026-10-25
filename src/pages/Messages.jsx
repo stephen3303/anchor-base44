@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import MessageFilters from '@/components/anchor/MessageFilters';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MessageTable from '@/components/anchor/MessageTable';
 import MessagePreviewPane from '@/components/anchor/MessagePreviewPane';
 import { SAMPLE_MESSAGES, unreadCount } from '@/data/anchorSampleData';
 
 const ALL = 'all';
+const ROW_LIMITS = ['25', '50', '100', ALL];
 
 const matches = (message, filters) => {
   if (filters.precedence !== ALL && message.precedence !== filters.precedence) return false;
@@ -33,8 +35,14 @@ export default function Messages() {
   const [rows, setRows] = useState(() => SAMPLE_MESSAGES.map((m) => ({ ...m })));
   const [filters, setFilters] = useState({ q: '', precedence: ALL, type: ALL, lifecycle: ALL, read: ALL });
   const [selectedId, setSelectedId] = useState(null);
+  const [rowLimit, setRowLimit] = useState(ALL);
+  const previewRef = useRef(null);
 
   const filtered = useMemo(() => rows.filter((m) => matches(m, filters)), [rows, filters]);
+  const visible = useMemo(
+    () => (rowLimit === ALL ? filtered : filtered.slice(0, Number(rowLimit))),
+    [filtered, rowLimit],
+  );
   const selected = rows.find((r) => r.id === selectedId) || null;
 
   useEffect(() => {
@@ -48,6 +56,12 @@ export default function Messages() {
   const selectMessage = (message) => {
     setSelectedId(message.id);
     setRows((prev) => prev.map((r) => (r.id === message.id ? { ...r, read_state: 'read' } : r)));
+    // Below the xl breakpoint the record opens under the list, so bring it into view.
+    if (!window.matchMedia('(min-width: 1280px)').matches) {
+      window.setTimeout(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    }
   };
 
   const toggleStar = (id) => {
@@ -64,23 +78,42 @@ export default function Messages() {
             Zulu
           </p>
         </div>
-        <p className="max-w-md text-[11.5px] text-mutedink">
-          Official records are immutable. Status changes arrive as newer messages and are shown as labels and links —
-          a reply is drafted as a new message, never an edit.
-        </p>
       </header>
 
       <MessageFilters value={filters} onChange={setFilters} />
 
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[11.5px] text-mutedink">
+          Showing {visible.length} of {filtered.length} matching records
+        </p>
+        <div className="ml-auto flex items-center gap-2">
+          <label htmlFor="row-limit" className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-mutedink">
+            Rows
+          </label>
+          <Select value={rowLimit} onValueChange={setRowLimit}>
+            <SelectTrigger id="row-limit" className="h-8 w-[110px] border-line text-[12.5px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROW_LIMITS.map((limit) => (
+                <SelectItem key={limit} value={limit}>
+                  {limit === ALL ? 'All' : limit}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className={selected ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]' : 'grid gap-4'}>
         <MessageTable
-          messages={filtered}
+          messages={visible}
           selectedId={selectedId}
           onSelect={selectMessage}
           onToggleStar={toggleStar}
         />
         {selected && (
-          <div className="min-w-0 xl:sticky xl:top-[110px] xl:self-start">
+          <div ref={previewRef} className="min-w-0 scroll-mt-[104px] xl:sticky xl:top-[110px] xl:self-start">
             <MessagePreviewPane message={selected} onClose={() => setSelectedId(null)} />
           </div>
         )}

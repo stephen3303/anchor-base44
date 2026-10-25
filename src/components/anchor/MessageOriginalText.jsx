@@ -24,7 +24,6 @@ export default function MessageOriginalText({ message }) {
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           Complete original message
         </h2>
-        <span className="text-[10.5px] text-mutedink">· full text, no excerpt</span>
         <Button
           variant="outline"
           size="sm"
@@ -39,10 +38,6 @@ export default function MessageOriginalText({ message }) {
       <pre className="official-text anchor-mono anchor-scroll mt-2 overflow-x-auto rounded-sm border border-line bg-navy-950/[0.03] p-3 text-[12.5px] text-ink">
         {text}
       </pre>
-
-      <p className="mt-2 text-[11px] leading-snug text-mutedink">
-        Every paragraph of the message as received, in order and in full. Read-only — the record text is never edited.
-      </p>
     </section>
   );
 }

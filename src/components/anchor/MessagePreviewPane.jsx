@@ -123,10 +123,6 @@ export default function MessagePreviewPane({ message, onClose }) {
             AI-generated summary — not authoritative
           </p>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink">{message.ai_summary}</p>
-          <p className="mt-1.5 text-[10.5px] text-mutedink">
-            The official text above governs. Summaries never appear in the print rendition or in official-text search
-            results.
-          </p>
         </div>
 
         <dl className="mt-4 border-t border-line pt-3">

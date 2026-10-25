@@ -34,10 +34,6 @@ export default function MessagePlainTextView({ message }) {
         <pre className="official-text anchor-mono anchor-scroll overflow-x-auto rounded-sm border border-line bg-navy-950/[0.03] p-3 text-[12.5px] leading-relaxed text-ink">
           {text}
         </pre>
-        <p className="mt-3 text-[11px] leading-snug text-mutedink">
-          The message exactly as it arrived from {message.source} — plain text, no formatting applied and nothing
-          removed. Read-only; the record text is never edited.
-        </p>
       </div>
     </section>
   );

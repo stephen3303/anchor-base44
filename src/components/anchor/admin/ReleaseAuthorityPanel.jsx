@@ -46,10 +46,6 @@ export default function ReleaseAuthorityPanel({ authorities, users, onAdd, onRem
           <ShieldCheck className="h-4 w-4 text-navy-600" aria-hidden="true" />
           Release authority
         </h3>
-        <p className="mt-0.5 text-[11.5px] leading-snug text-mutedink">
-          Release authority rests with the commanding officer, who may designate subordinates. Only a designated user
-          can release a message, and the release is recorded against their name.
-        </p>
       </header>
 
       <ul className="divide-y divide-line/70">

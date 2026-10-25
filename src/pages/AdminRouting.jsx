@@ -144,10 +144,6 @@ export default function AdminRouting() {
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <div>
             <h3 className="text-[13px] font-semibold text-ink">Routing workflows</h3>
-            <p className="mt-0.5 text-[11.5px] leading-snug text-mutedink">
-              The most specific match wins: a workflow naming the message type and originator beats one that matches
-              any.
-            </p>
           </div>
           <Button
             type="button"

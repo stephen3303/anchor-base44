@@ -111,9 +111,6 @@ export default function MessageRecord() {
           <h1 className="font-heading text-[21px] font-semibold leading-tight tracking-tight text-ink sm:text-[24px]">
             {message.subject}
           </h1>
-          <p className="text-[12px] text-mutedink">
-            Immutable official record. Status changes arrive as newer messages — this text is never edited.
-          </p>
           <MessageActionBar message={message} />
         </header>
 
@@ -206,9 +203,6 @@ export default function MessageRecord() {
             </span>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-ink">{message.ai_summary}</p>
-          <p className="mt-1.5 text-[11px] text-mutedink">
-            Generated text, held apart from the official record. Never part of the record and never printed with it.
-          </p>
         </div>
 
         <div className="border-t border-line px-4 py-4 sm:px-6">
