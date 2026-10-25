@@ -12,9 +12,14 @@ import DraftPreview from '@/components/anchor/drafting/DraftPreview';
 import RoutingTimeline from '@/components/anchor/drafting/RoutingTimeline';
 import RouteActionPanel from '@/components/anchor/drafting/RouteActionPanel';
 import DerivationNotice from '@/components/anchor/drafting/DerivationNotice';
+import DraftNtpFields from '@/components/anchor/drafting/DraftNtpFields';
+import NtpCheckPanel from '@/components/anchor/drafting/NtpCheckPanel';
 import { buildBodyText, dtgNow, renderMessage } from '@/lib/ntp';
+import { errorsOf, validateDraft } from '@/lib/ntpValidate';
 import { buildRoute, currentRouteStep, isEditable, releaseAuthorityFor, routeEmails, selectWorkflow } from '@/lib/drafting';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
+
+const sourceOf = (d) => SAMPLE_MESSAGES.find((m) => m.id === d.derived_from_message_id) || null;
 
 const Panel = ({ title, hint, children }) => (
   <section className="rounded-md border border-line bg-white shadow-sm">
@@ -93,23 +98,18 @@ export default function DraftWorkspace() {
     }
   };
 
+  const blockOnErrors = () => {
+    const errors = errorsOf(validateDraft(draft, { source: sourceOf(draft) }));
+    if (!errors.length) return false;
+    toast({
+      title: `${errors.length} NTP 3(J) error${errors.length === 1 ? '' : 's'} to fix`,
+      description: `${errors[0].message} (${errors[0].ref}) See the NTP 3(J) check panel.`,
+    });
+    return true;
+  };
+
   const submit = async () => {
-    if (!draft.subject?.trim()) {
-      toast({ title: 'Subject required', description: 'A message needs a subject line before it can be submitted.' });
-      return;
-    }
-    if (!draft.originator?.trim()) {
-      toast({ title: 'Originator required', description: 'The FM line must name the releasing command.' });
-      return;
-    }
-    if (!(draft.action_addressees || []).length) {
-      toast({ title: 'Action addressees required', description: 'At least one TO addressee is needed.' });
-      return;
-    }
-    if (!(draft.paragraphs || []).some((p) => String(p).trim())) {
-      toast({ title: 'No remarks', description: 'The message body has no paragraphs.' });
-      return;
-    }
+    if (blockOnErrors()) return;
     const workflow = selectWorkflow(workflows, draft);
     if (!workflow) {
       toast({
@@ -209,13 +209,18 @@ export default function DraftWorkspace() {
       });
       return;
     }
+    if (blockOnErrors()) return;
     setBusy(true);
     try {
       const now = new Date().toISOString();
       const steps = draft.routing_steps.map((s) =>
         s.order === step.order ? { ...s, status: 'released', acted_at: now } : s,
       );
-      const rendered = renderMessage(draft);
+      const rendered = renderMessage({
+        ...draft,
+        released_by_name: user.full_name || user.email,
+        release_authority_designation: authority.designation,
+      });
       await persist({
         routing_steps: steps,
         draft_status: 'released',
@@ -317,7 +322,9 @@ export default function DraftWorkspace() {
   }
 
   const editable = isEditable(draft);
-  const source = SAMPLE_MESSAGES.find((m) => m.id === draft.derived_from_message_id) || null;
+  const source = sourceOf(draft);
+  const issues = validateDraft(draft, { source });
+  const hasRoute = (draft.routing_steps || []).length > 0;
   const preview = editable ? selectWorkflow(workflows, draft) : null;
   const workflowPreview = preview
     ? { name: preview.name, steps: buildRoute(preview) }
@@ -366,6 +373,10 @@ export default function DraftWorkspace() {
             <DraftHeaderFields draft={draft} onChange={patch} disabled={!editable} />
           </Panel>
 
+          <Panel title="GENADMIN sets" hint="SSIC, point of contact and declassification, required by NTP 3(J).">
+            <DraftNtpFields draft={draft} onChange={patch} disabled={!editable} />
+          </Panel>
+
           <Panel title="References" hint="A linked reference becomes a link to that message in the record.">
             <DraftReferenceEditor
               references={draft.references}
@@ -387,6 +398,12 @@ export default function DraftWorkspace() {
         </div>
 
         <div className="space-y-4">
+          {(editable || issues.length > 0) && (
+            <Panel title="NTP 3(J) check" hint="Checked live against the Telecommunications Users Manual.">
+              <NtpCheckPanel issues={issues} />
+            </Panel>
+          )}
+
           <Panel title="Route and release">
             <RouteActionPanel
               draft={draft}
@@ -403,9 +420,11 @@ export default function DraftWorkspace() {
             />
           </Panel>
 
-          <Panel title="Routing chain">
-            <RoutingTimeline draft={draft} />
-          </Panel>
+          {hasRoute && (
+            <Panel title="Routing chain">
+              <RoutingTimeline draft={draft} />
+            </Panel>
+          )}
         </div>
       </div>
     </div>

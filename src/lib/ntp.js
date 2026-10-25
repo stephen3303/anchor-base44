@@ -1,22 +1,58 @@
 import moment from 'moment';
 
 /**
- * NTP-style message formatting.
+ * Message formatting per NTP 3(J), Telecommunications Users Manual.
  *
- * Reproduces the shape of a naval message: precedence prosign and DTG, FM/TO/INFO
- * setlines, BT separators, classification line, SUBJ, REF/AMPN setlines, numbered
- * RMKS paragraphs wrapped at the standard line length, and the NNNN terminator.
- * Everything here is derived from the draft record — nothing is inferred from a
- * live circuit, and the rendered text is frozen onto the record at release.
+ * Output follows the USMTF GENADMIN sequence (Annex A, Figure A-2):
+ *   DTG line, FM / TO / INFO, BT, classification + SSIC, [general message title],
+ *   MSGID, SUBJ, REF, AMPN or NARR, POC, RMKS, DECL, BT, #serial, NNNN.
+ * All text is capitals, every line is at most 69 characters, every set ends with
+ * "//", and addressee lines respect the 55 character PLA limit with office-code
+ * continuation lines indented five spaces. The rendered text is frozen at release.
  */
 
 export const PRECEDENCE_PROSIGN = { FLASH: 'Z', IMMEDIATE: 'O', PRIORITY: 'P', ROUTINE: 'R' };
-export const CLASSIFICATION_SHORT = { UNCLASSIFIED: 'UNCLAS', CONFIDENTIAL: 'CONFID', SECRET: 'SECRET' };
+/** Classified markings are spelled with a space after each character (¶702a). */
+export const CLASSIFICATION_SHORT = {
+  UNCLASSIFIED: 'UNCLAS',
+  CONFIDENTIAL: 'C O N F I D E N T I A L',
+  SECRET: 'S E C R E T',
+};
 export const LINE_LIMIT = 69;
+export const ADDRESS_LIMIT = 55;
+export const SUBJECT_FIRST_LIMIT = 64;
+export const SUBJECT_NEXT_LIMIT = 68;
 
+export const REF_KINDS = ['MSG', 'DOC', 'LTR', 'TEL', 'CON', 'GENADMIN'];
+/** Reference types that must be explained in an AMPN or NARR set (Annex A, A102l). */
+export const AMPLIFIED_KINDS = ['MSG', 'DOC', 'LTR', 'TEL', 'CON'];
+
+const up = (value) => String(value || '').toUpperCase();
+
+export const normalizeKind = (kind) => {
+  const k = up(kind);
+  return REF_KINDS.includes(k) ? k : 'MSG';
+};
+
+/** "CNO WASHINGTON DC//N6/N61//" -> { pla: "CNO WASHINGTON DC", codes: "N6/N61" } */
+export const splitOfficeCodes = (entry) => {
+  const text = up(entry).trim();
+  const i = text.indexOf('//');
+  if (i < 0) return { pla: text, codes: null };
+  return { pla: text.slice(0, i).trim(), codes: text.slice(i + 2).replace(/\/\/\s*$/, '') };
+};
+
+/** "101358Z JUN 26" -> "101358ZJUN26" for REF sets. */
+export const compactDtg = (dtg) => {
+  const m = String(dtg || '').match(/(\d{6})Z\s*([A-Za-z]{3})\s*(\d{2})/);
+  return m ? `${m[1]}Z${m[2].toUpperCase()}${m[3]}` : String(dtg || '');
+};
+
+/** DDHHMMZ MON YY. 0000Z is never used; 0001Z stands in (¶504). */
 export const dtgNow = (value) => {
   const t = value ? moment.utc(value) : moment.utc();
-  return `${t.format('DDHHmm')}Z ${t.format('MMM').toUpperCase()} ${t.format('YY')}`;
+  const hm = t.format('HHmm') === '0000' ? '0001' : t.format('HHmm');
+  return `${t.format('DD')}${hm}Z ${t.format('MMM').toUpperCase()} ${t.format('YY')}`;
 };
 
 export const refLabel = (index) => String.fromCharCode(65 + index);
@@ -44,37 +80,104 @@ export const wrapLines = (text, limit = LINE_LIMIT) =>
     })
     .join('\n');
 
+/** One addressee as heading lines: long entries continue on office-code boundaries, indented five spaces. */
+export const addresseeLines = (entry) => {
+  let rest = up(entry).trim();
+  const out = [];
+  while (rest.length > ADDRESS_LIMIT) {
+    const cut = rest.slice(0, ADDRESS_LIMIT).lastIndexOf('/');
+    if (cut <= 0) break;
+    out.push(rest.slice(0, cut + 1));
+    rest = rest.slice(cut + 1);
+  }
+  out.push(rest);
+  return out.map((line, i) => (i ? `     ${line}` : line));
+};
+
+const addressBlock = (prosign, list) =>
+  list.flatMap((entry, i) => {
+    const lines = addresseeLines(entry);
+    return i === 0 ? [`${prosign} ${lines[0]}`, ...lines.slice(1)] : lines;
+  });
+
+/** SUBJ set; a long subject continues on a second line that starts with a field marker. */
+export const subjectLines = (subject) => {
+  const s = up(subject).trim() || '[SUBJECT]';
+  if (s.length <= SUBJECT_FIRST_LIMIT) return [`SUBJ/${s}//`];
+  let cut = s.lastIndexOf(' ', SUBJECT_FIRST_LIMIT);
+  if (cut <= 0) cut = SUBJECT_FIRST_LIMIT;
+  return [`SUBJ/${s.slice(0, cut).trim()}`, `/${s.slice(cut).trim()}//`];
+};
+
+const cleanAmplification = (ref) =>
+  up(ref.amplifying)
+    .replace(/^\s*REF\s+[A-Z]\s+IS\s+/, '')
+    .replace(/[.\s]+$/, '')
+    .trim();
+
 export const numberedParagraphs = (paragraphs) =>
   (paragraphs || [])
     .map((p) => String(p || '').trim())
     .filter((p) => p.length > 0)
-    .map((p, i) => `${i + 1}. ${wrapLines(p).replace(/\n/g, '\n   ')}`)
+    .map((p, i) => `${i + 1}. ${wrapLines(up(p))}`)
     .join('\n\n');
 
 export const renderMessage = (draft) => {
+  const dtg = draft.dtg || dtgNow();
   const prosign = PRECEDENCE_PROSIGN[draft.precedence] || 'R';
+  const month = (dtg.match(/Z\s*([A-Z]{3})/) || [])[1] || '-';
+  const originator = splitOfficeCodes(draft.originator).pla || '[ORIGINATOR]';
+  const refs = draft.references || [];
   const lines = [];
-  lines.push(`${prosign} ${draft.dtg || dtgNow()}`);
-  lines.push(`FM ${draft.originator || '[originator]'}`);
-  lines.push(`TO ${(draft.action_addressees || []).join(', ') || '[action addressees]'}`);
-  if ((draft.info_addressees || []).length) {
-    lines.push(`INFO ${draft.info_addressees.join(', ')}`);
-  }
+
+  lines.push(`${prosign} ${dtg}${draft.traffic_class === 'OPS' ? '' : ' ZYB'}`);
+  lines.push(`FM ${up(draft.originator).trim() || '[ORIGINATOR]'}`);
+  const action = draft.action_addressees || [];
+  lines.push(...addressBlock('TO', action.length ? action : ['[ACTION ADDRESSEES]']));
+  if ((draft.info_addressees || []).length) lines.push(...addressBlock('INFO', draft.info_addressees));
   lines.push('BT');
-  lines.push(`${CLASSIFICATION_SHORT[draft.classification] || 'UNCLAS'} //N03100//`);
-  lines.push(`SUBJ: ${draft.subject || '[subject]'}`);
-  (draft.references || []).forEach((r) => {
-    lines.push(`REF/${r.ref_label}/MSG/${r.value || '[reference]'}//`);
+
+  lines.push(`${CLASSIFICATION_SHORT[draft.classification] || 'UNCLAS'} //${up(draft.ssic) || '[SSIC]'}//`);
+  if (draft.general_message_id) lines.push('', up(draft.general_message_id));
+  lines.push('', `MSGID/GENADMIN/${originator}/-/${month}//`);
+  lines.push('', ...subjectLines(draft.subject));
+
+  if (refs.length) lines.push('');
+  refs.forEach((r, i) => {
+    lines.push(wrapLines(`REF/${refLabel(i)}/${normalizeKind(r.kind)}/${up(r.value) || '[REFERENCE]'}//`));
   });
-  (draft.references || [])
-    .filter((r) => String(r.amplifying || '').trim())
-    .forEach((r) => {
-      lines.push(`AMPN/REF ${r.ref_label} IS ${String(r.amplifying).trim()}//`);
-    });
-  lines.push('RMKS/');
-  lines.push(numberedParagraphs(draft.paragraphs));
-  lines.push('BT');
-  lines.push('NNNN');
+
+  const explained = refs.map((r, i) => ({ r, i })).filter(({ r }) => cleanAmplification(r));
+  if (refs.length === 1 && explained.length) {
+    lines.push('', wrapLines(`AMPN/REF A IS ${cleanAmplification(refs[0])}.//`));
+  } else if (refs.length > 1 && explained.length) {
+    const narr = explained.map(({ r, i }) => `REF ${refLabel(i)} IS ${cleanAmplification(r)}.`).join(' ');
+    lines.push('', wrapLines(`NARR/${narr}//`));
+  }
+
+  const phone = up(draft.poc_phone).trim();
+  lines.push(
+    '',
+    wrapLines(
+      `POC/${up(draft.poc_name).trim() || '[NAME]'}/${up(draft.poc_rank).trim() || '[RANK]'}/${
+        up(draft.poc_location).trim() || '-'
+      }/-/TEL: ${phone || '[PHONE]'}//`,
+    ),
+  );
+
+  const paras = (draft.paragraphs || []).map((p) => up(String(p || '').trim())).filter(Boolean);
+  if (draft.released_by_name) {
+    const role = draft.release_authority_designation ? `, ${up(draft.release_authority_designation)}` : '';
+    paras.push(`RELEASED BY ${up(draft.released_by_name)}${role}.`);
+  }
+  const body = paras.length ? paras.map((p, i) => `${i + 1}. ${p}`).join('\n\n') : '1. [REMARKS]';
+  lines.push('', wrapLines(`RMKS/${body}//`));
+
+  if (draft.classification && draft.classification !== 'UNCLASSIFIED') {
+    lines.push('', `DECL/${up(draft.decl) || '[DECL]'}//`);
+  }
+
+  lines.push('', 'BT', '#0001', 'NNNN');
   return lines.join('\n');
 };
 

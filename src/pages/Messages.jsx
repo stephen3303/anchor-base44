@@ -66,22 +66,24 @@ export default function Messages() {
         </div>
         <p className="max-w-md text-[11.5px] text-mutedink">
           Official records are immutable. Status changes arrive as newer messages and are shown as labels and links —
-          there is no edit, reply or forward.
+          a reply is drafted as a new message, never an edit.
         </p>
       </header>
 
       <MessageFilters value={filters} onChange={setFilters} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
+      <div className={selected ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]' : 'grid gap-4'}>
         <MessageTable
           messages={filtered}
           selectedId={selectedId}
           onSelect={selectMessage}
           onToggleStar={toggleStar}
         />
-        <div className={selected ? '' : 'hidden xl:block'}>
-          <MessagePreviewPane message={selected} onClose={() => setSelectedId(null)} />
-        </div>
+        {selected && (
+          <div className="min-w-0 xl:sticky xl:top-[110px] xl:self-start">
+            <MessagePreviewPane message={selected} onClose={() => setSelectedId(null)} />
+          </div>
+        )}
       </div>
     </div>
   );

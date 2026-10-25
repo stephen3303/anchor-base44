@@ -32,15 +32,8 @@ export default function MessagePreviewPane({ message, onClose }) {
   const [shareOpen, setShareOpen] = useState(false);
   const shareUrl = message ? `${window.location.origin}/messages/${message.id}` : '';
 
-  if (!message) {
-    return (
-      <div className="hidden h-full min-h-[320px] items-center justify-center rounded-md border border-dashed border-line bg-white/60 px-6 text-center xl:flex">
-        <p className="text-[12.5px] text-mutedink">
-          Select a message to preview the official text, metadata and integrity block.
-        </p>
-      </div>
-    );
-  }
+  // Nothing is shown until a record is selected — no placeholder card.
+  if (!message) return null;
 
   const replacement = message.replaced_by ? messageByReference(message.replaced_by) : null;
 
@@ -66,7 +59,7 @@ export default function MessagePreviewPane({ message, onClose }) {
               type="button"
               onClick={onClose}
               aria-label="Close preview"
-              className="ml-auto rounded-sm p-1 text-mutedink transition-colors hover:bg-white hover:text-ink xl:hidden"
+              className="ml-auto rounded-sm p-1 text-mutedink transition-colors hover:bg-white hover:text-ink"
             >
               <X className="h-4 w-4" />
             </button>

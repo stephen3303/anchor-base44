@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { Link2, Link2Off, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { refLabel } from '@/lib/ntp';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { REF_KINDS, normalizeKind, refLabel } from '@/lib/ntp';
+import { referenceValue } from '@/lib/draftPrefill';
 import MessagePickerDialog from './MessagePickerDialog';
 
 /**
@@ -17,7 +19,7 @@ export default function DraftReferenceEditor({ references, onChange, disabled })
   const relabel = (list) => list.map((r, i) => ({ ...r, ref_label: refLabel(i) }));
   const update = (index, patch) => onChange(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
 
-  const add = () => onChange([...rows, { ref_label: refLabel(rows.length), kind: 'message', value: '', message_id: '', title: '', amplifying: '' }]);
+  const add = () => onChange([...rows, { ref_label: refLabel(rows.length), kind: 'MSG', value: '', message_id: '', title: '', amplifying: '' }]);
   const remove = (index) => onChange(relabel(rows.filter((_, i) => i !== index)));
 
   return (
@@ -36,6 +38,18 @@ export default function DraftReferenceEditor({ references, onChange, disabled })
             </span>
 
             <div className="min-w-0 flex-1 space-y-2">
+              <Select value={normalizeKind(ref.kind)} onValueChange={(v) => update(index, { kind: v })} disabled={disabled}>
+                <SelectTrigger className="h-8 w-[116px] text-[12px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REF_KINDS.map((k) => (
+                    <SelectItem key={k} value={k} className="text-[12px]">
+                      {k}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {ref.message_id ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="anchor-mono text-[12px] font-semibold text-ink">{ref.value}</span>
@@ -53,7 +67,7 @@ export default function DraftReferenceEditor({ references, onChange, disabled })
                   value={ref.value}
                   onChange={(e) => update(index, { value: e.target.value })}
                   disabled={disabled}
-                  placeholder="NAVADMIN 234/26 or free-text reference"
+                  placeholder="ORIGINATOR/DTG, e.g. CNO WASHINGTON DC/201311ZDEC96"
                   className="anchor-mono h-8 text-[12px]"
                 />
               )}
@@ -62,7 +76,7 @@ export default function DraftReferenceEditor({ references, onChange, disabled })
                 value={ref.amplifying || ''}
                 onChange={(e) => update(index, { amplifying: e.target.value })}
                 disabled={disabled}
-                placeholder="AMPN: what this reference is (optional)"
+                placeholder="AMPN: what this reference is (required for MSG, DOC, LTR, TEL, CON)"
                 className="h-8 text-[12px]"
               />
             </div>
@@ -102,8 +116,9 @@ export default function DraftReferenceEditor({ references, onChange, disabled })
           update(pickerIndex, {
             message_id: m.id,
             title: m.subject,
-            kind: 'message',
-            value: m.reference,
+            kind: 'MSG',
+            value: referenceValue(m),
+            amplifying: rows[pickerIndex]?.amplifying || `${m.reference}, ${m.subject}`,
           })
         }
       />

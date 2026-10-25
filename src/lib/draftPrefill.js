@@ -8,6 +8,7 @@
  * Any message may be answered.
  */
 import { EFFECT_ON_SOURCE } from '@/lib/drafting';
+import { compactDtg } from '@/lib/ntp';
 
 /** The command that owns this ANCHOR instance. */
 export const COMMAND_ORIGINATOR = 'COMSUBLANT NORFOLK VA';
@@ -16,6 +17,7 @@ export const BASE_DRAFT = {
   draft_status: 'drafting',
   precedence: 'ROUTINE',
   classification: 'UNCLASSIFIED',
+  traffic_class: 'ADMIN',
   message_type: 'COMSUBLANT MSG',
   originator: COMMAND_ORIGINATOR,
   action_addressees: [],
@@ -38,14 +40,17 @@ export const splitAddressees = (value) =>
     .map((entry) => entry.trim())
     .filter(Boolean);
 
+/** Reference value per NTP 3(J) Annex A: originator / date-time group. */
+export const referenceValue = (message) => `${message.originator}/${compactDtg(message.dtg)}`;
+
 /** REF A, linked to the message being answered, amended or cancelled. */
 export const sourceReference = (message) => ({
   ref_label: 'A',
-  kind: 'message',
-  value: message.reference,
+  kind: 'MSG',
+  value: referenceValue(message),
   message_id: message.id,
   title: message.subject,
-  amplifying: `REF A IS ${message.reference} ${message.dtg}`,
+  amplifying: `${message.reference}, ${message.subject}`,
 });
 
 const DERIVATION_OPENING = {
@@ -53,14 +58,14 @@ const DERIVATION_OPENING = {
     'This corrected copy replaces the original in its entirety. The error in the original is corrected as follows: ',
   update:
     'This message amends the original. Paragraphs changed are listed below; all other direction in the original remains in effect.',
-  cancellation:
-    'This message cancels the original in its entirety with no force. Do not execute any direction contained in the original.',
+  cancellation: 'CANCEL REF A.',
 };
 
 const DERIVATION_SUBJECT = {
   corrected_copy: (message) => message.subject,
   update: (message) => `${message.subject} — UPDATE`,
-  cancellation: (message) => `CANCELLATION OF ${message.reference}`,
+  // NTP 3(J) ¶403b: a cancellation carries the subject of the message it cancels.
+  cancellation: (message) => message.subject,
 };
 
 /** A corrected copy, update or cancellation of a message this command originated. */
@@ -70,10 +75,14 @@ export const derivationDraft = (message, type) => ({
   precedence: message.precedence,
   classification: message.classification,
   originator: message.originator,
-  action_addressees: splitAddressees(message.to),
-  info_addressees: splitAddressees(message.info),
+  // ¶403b: every addressee of a cancelled message becomes an action addressee.
+  action_addressees:
+    type === 'cancellation'
+      ? [...splitAddressees(message.to), ...splitAddressees(message.info)]
+      : splitAddressees(message.to),
+  info_addressees: type === 'cancellation' ? [] : splitAddressees(message.info),
   references: [sourceReference(message)],
-  paragraphs: [DERIVATION_OPENING[type], ''],
+  paragraphs: type === 'cancellation' ? [DERIVATION_OPENING[type]] : [DERIVATION_OPENING[type], ''],
   derivation_type: type,
   effect_on_source: EFFECT_ON_SOURCE[type] || 'none',
   derived_from_message_id: message.id,

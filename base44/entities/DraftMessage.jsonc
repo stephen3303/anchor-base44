@@ -36,6 +36,35 @@
       ],
       "default": "UNCLASSIFIED"
     },
+    "traffic_class": {
+      "type": "string",
+      "enum": [
+        "ADMIN",
+        "OPS"
+      ],
+      "default": "ADMIN"
+    },
+    "ssic": {
+      "type": "string"
+    },
+    "general_message_id": {
+      "type": "string"
+    },
+    "poc_name": {
+      "type": "string"
+    },
+    "poc_rank": {
+      "type": "string"
+    },
+    "poc_location": {
+      "type": "string"
+    },
+    "poc_phone": {
+      "type": "string"
+    },
+    "decl": {
+      "type": "string"
+    },
     "dtg": {
       "type": "string"
     },

@@ -79,16 +79,18 @@ export default function Home() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
         <div className="space-y-5">
-          <SectionCard
-            title="Mandatory acknowledgements due"
-            hint={`${pending.length} pending · ${overdue} overdue`}
-          >
-            <div className="space-y-3">
-              {pending.map((message) => (
-                <MandatoryAckCard key={message.id} message={message} onAcknowledge={setAckTarget} />
-              ))}
-            </div>
-          </SectionCard>
+          {pending.length > 0 && (
+            <SectionCard
+              title="Mandatory acknowledgements due"
+              hint={`${pending.length} pending · ${overdue} overdue`}
+            >
+              <div className="space-y-3">
+                {pending.map((message) => (
+                  <MandatoryAckCard key={message.id} message={message} onAcknowledge={setAckTarget} />
+                ))}
+              </div>
+            </SectionCard>
+          )}
 
           <SectionCard
             title="Latest traffic"
@@ -107,13 +109,17 @@ export default function Home() {
         </div>
 
         <div className="space-y-5">
-          <SectionCard title="Recent status changes" hint="Amended, corrected, cancelled, superseded">
-            <StatusChangeList messages={changes} />
-          </SectionCard>
+          {changes.length > 0 && (
+            <SectionCard title="Recent status changes" hint="Amended, corrected, cancelled, superseded">
+              <StatusChangeList messages={changes} />
+            </SectionCard>
+          )}
 
-          <SectionCard title="Open action items" hint="Sorted by suspense">
-            <OpenActionList messages={actions} />
-          </SectionCard>
+          {actions.length > 0 && (
+            <SectionCard title="Open action items" hint="Sorted by suspense">
+              <OpenActionList messages={actions} />
+            </SectionCard>
+          )}
         </div>
       </div>
 
