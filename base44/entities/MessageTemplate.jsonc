@@ -1,0 +1,89 @@
+{
+  "name": "MessageTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "template_class": {
+      "type": "string",
+      "enum": [
+        "basic",
+        "standard"
+      ]
+    },
+    "message_type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "guidance": {
+      "type": "string"
+    },
+    "include_references": {
+      "type": "boolean",
+      "default": false
+    },
+    "default_subject": {
+      "type": "string"
+    },
+    "default_action_addressees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "default_paragraphs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "paragraph_prompts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "template_class"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

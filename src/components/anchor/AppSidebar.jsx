@@ -7,6 +7,8 @@ import {
   FileText,
   Home,
   Inbox,
+  PenLine,
+  Route,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -27,6 +29,7 @@ const GROUPS = [
   {
     label: 'Act',
     items: [
+      { to: '/drafting', label: 'Drafting', icon: PenLine },
       { to: '/subscriptions', label: 'Subscriptions', icon: Bell },
       { to: '/briefings', label: 'Briefings', icon: FileText },
       { to: '/watch-turnover', label: 'Watch Turnover', icon: ClipboardList },
@@ -39,6 +42,7 @@ const GROUPS = [
       { to: '/reports', label: 'Reports', icon: BarChart3 },
       { to: '/audit', label: 'Audit & Integrity', icon: ShieldCheck },
       { to: '/admin', label: 'Admin', icon: SlidersHorizontal, badge: pendingApprovals },
+      { to: '/admin/routing', label: 'Routing & Release', icon: Route },
       { to: '/profile', label: 'Profile & Settings', icon: UserCircle },
     ],
   },

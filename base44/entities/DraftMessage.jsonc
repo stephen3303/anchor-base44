@@ -1,0 +1,280 @@
+{
+  "name": "DraftMessage",
+  "type": "object",
+  "properties": {
+    "draft_status": {
+      "type": "string",
+      "enum": [
+        "drafting",
+        "submitted",
+        "in_routing",
+        "returned",
+        "released",
+        "withdrawn"
+      ],
+      "default": "drafting"
+    },
+    "message_type": {
+      "type": "string"
+    },
+    "precedence": {
+      "type": "string",
+      "enum": [
+        "FLASH",
+        "IMMEDIATE",
+        "PRIORITY",
+        "ROUTINE"
+      ],
+      "default": "ROUTINE"
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "UNCLASSIFIED",
+        "CONFIDENTIAL",
+        "SECRET"
+      ],
+      "default": "UNCLASSIFIED"
+    },
+    "dtg": {
+      "type": "string"
+    },
+    "originator": {
+      "type": "string"
+    },
+    "action_addressees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "info_addressees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "subject": {
+      "type": "string"
+    },
+    "template_id": {
+      "type": "string"
+    },
+    "template_name": {
+      "type": "string"
+    },
+    "template_class": {
+      "type": "string",
+      "enum": [
+        "basic",
+        "standard"
+      ]
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref_label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "draft_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "amplifying": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "paragraphs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "body_text": {
+      "type": "string"
+    },
+    "rendered_text": {
+      "type": "string"
+    },
+    "derivation_type": {
+      "type": "string",
+      "enum": [
+        "original",
+        "corrected_copy",
+        "update",
+        "cancellation"
+      ],
+      "default": "original"
+    },
+    "derived_from_message_id": {
+      "type": "string"
+    },
+    "derived_from_reference": {
+      "type": "string"
+    },
+    "effect_on_source": {
+      "type": "string",
+      "enum": [
+        "none",
+        "amend",
+        "supersede",
+        "cancel"
+      ],
+      "default": "none"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "routing_workflow_id": {
+      "type": "string"
+    },
+    "routing_workflow_name": {
+      "type": "string"
+    },
+    "routing_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duty": {
+            "type": "string"
+          },
+          "assignee_email": {
+            "type": "string"
+          },
+          "assignee_name": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "acted_at": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "current_step": {
+      "type": "number",
+      "default": 0
+    },
+    "assigned_to_email": {
+      "type": "string"
+    },
+    "assigned_to_name": {
+      "type": "string"
+    },
+    "assigned_duty": {
+      "type": "string"
+    },
+    "routed_to_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "release_authority_designation": {
+      "type": "string"
+    },
+    "released_at": {
+      "type": "string"
+    },
+    "released_by_email": {
+      "type": "string"
+    },
+    "released_by_name": {
+      "type": "string"
+    },
+    "return_comment": {
+      "type": "string"
+    },
+    "creator_name": {
+      "type": "string"
+    },
+    "creator_duty": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject",
+    "draft_status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.routed_to_emails": "{{user.email}}"
+        },
+        {
+          "data.draft_status": "released"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.assigned_to_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -10,6 +10,11 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/anchor/AppLayout';
 import Home from '@/pages/Home';
 import Messages from '@/pages/Messages';
+import MessageRecord from '@/pages/MessageRecord';
+import Drafting from '@/pages/Drafting';
+import DraftNew from '@/pages/DraftNew';
+import DraftWorkspace from '@/pages/DraftWorkspace';
+import AdminRouting from '@/pages/AdminRouting';
 import Planned from '@/pages/Planned';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -54,15 +59,11 @@ const AuthenticatedApp = () => {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/messages" element={<Messages />} />
-          <Route
-            path="/messages/:id"
-            element={
-              <Planned
-                title="Message record"
-                note="The full record view: precedence and lifecycle banners linking to the replacing message, Message, Metadata, Related, References and Distribution tabs, monospace official text with a separate AI summary panel, the integrity block, attachments, print rendition with classification markings, and Share link."
-              />
-            }
-          />
+          <Route path="/messages/:id" element={<MessageRecord />} />
+          <Route path="/drafting" element={<Drafting />} />
+          <Route path="/drafting/new" element={<DraftNew />} />
+          <Route path="/drafting/:id" element={<DraftWorkspace />} />
+          <Route path="/admin/routing" element={<AdminRouting />} />
           <Route
             path="/search"
             element={

@@ -1,0 +1,94 @@
+{
+  "name": "RoutingWorkflow",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "match_message_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "match_originators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duty": {
+            "type": "string"
+          },
+          "assignee_email": {
+            "type": "string"
+          },
+          "assignee_name": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "sla_hours": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "created_by_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

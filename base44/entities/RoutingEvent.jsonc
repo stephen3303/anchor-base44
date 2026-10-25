@@ -1,0 +1,94 @@
+{
+  "name": "RoutingEvent",
+  "type": "object",
+  "properties": {
+    "draft_id": {
+      "type": "string"
+    },
+    "draft_subject": {
+      "type": "string"
+    },
+    "draft_reference": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "created",
+        "submitted",
+        "advanced",
+        "returned",
+        "revised",
+        "released",
+        "withdrawn"
+      ]
+    },
+    "from_status": {
+      "type": "string"
+    },
+    "to_status": {
+      "type": "string"
+    },
+    "step_order": {
+      "type": "number"
+    },
+    "step_title": {
+      "type": "string"
+    },
+    "actor_email": {
+      "type": "string"
+    },
+    "actor_name": {
+      "type": "string"
+    },
+    "actor_duty": {
+      "type": "string"
+    },
+    "comment": {
+      "type": "string"
+    },
+    "routed_to_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visible_to_all": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "draft_id",
+    "event_type"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.routed_to_emails": "{{user.email}}"
+        },
+        {
+          "data.visible_to_all": true
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
