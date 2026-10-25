@@ -9,6 +9,12 @@ import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSa
 import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
 import MessageOriginalText from '@/components/anchor/MessageOriginalText';
+import MessagePlainTextView from '@/components/anchor/MessagePlainTextView';
+
+const VIEWS = [
+  { id: 'record', label: 'Record view' },
+  { id: 'plain', label: 'Plain text' },
+];
 
 const Meta = ({ label, value }) => (
   <div>
@@ -21,6 +27,7 @@ const Meta = ({ label, value }) => (
 export default function MessageRecord() {
   const { id } = useParams();
   const [superseding, setSuperseding] = useState([]);
+  const [view, setView] = useState('record');
 
   const message = SAMPLE_MESSAGES.find((m) => m.id === id) || null;
 
@@ -65,13 +72,33 @@ export default function MessageRecord() {
     <div className="mx-auto w-full max-w-[1000px] space-y-4 anchor-fade-in">
       <ClassificationStrip />
 
-      <div>
+      <div className="flex flex-wrap items-center gap-2">
         <Link to="/messages" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-navy-600">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Back to Messages
         </Link>
+        <div className="ml-auto inline-flex overflow-hidden rounded-sm border border-line">
+          {VIEWS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setView(option.id)}
+              aria-pressed={view === option.id}
+              className={
+                view === option.id
+                  ? 'bg-navy-800 px-3 py-1.5 text-[11.5px] font-semibold text-white'
+                  : 'bg-white px-3 py-1.5 text-[11.5px] font-semibold text-mutedink transition-colors hover:bg-navy-100/60'
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {view === 'plain' ? (
+        <MessagePlainTextView message={message} />
+      ) : (
       <article className="rounded-md border border-line bg-white shadow-sm">
         <header className="space-y-2 border-b border-line px-4 py-4 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
@@ -201,6 +228,7 @@ export default function MessageRecord() {
           </p>
         </div>
       </article>
+      )}
 
       <ClassificationStrip />
     </div>
