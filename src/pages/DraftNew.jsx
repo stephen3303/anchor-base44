@@ -7,28 +7,10 @@ import { Input } from '@/components/ui/input';
 import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 import { DERIVATION_OPTIONS } from '@/data/draftOptions';
-import { EFFECT_ON_SOURCE } from '@/lib/drafting';
+import { BASE_DRAFT, derivationDraft, isOwnMessage } from '@/lib/draftPrefill';
 import { useToast } from '@/components/ui/use-toast';
 
 const DERIVATION_ICON = { corrected_copy: RefreshCw, update: FileText, cancellation: Ban };
-
-const BASE_DRAFT = {
-  draft_status: 'drafting',
-  precedence: 'ROUTINE',
-  classification: 'UNCLASSIFIED',
-  message_type: 'COMSUBLANT MSG',
-  originator: 'COMSUBLANT NORFOLK VA',
-  action_addressees: [],
-  info_addressees: [],
-  subject: '',
-  references: [],
-  paragraphs: [''],
-  derivation_type: 'original',
-  effect_on_source: 'none',
-  version: 1,
-  current_step: 0,
-  routed_to_emails: [],
-};
 
 export default function DraftNew() {
   const navigate = useNavigate();
@@ -70,44 +52,7 @@ export default function DraftNew() {
       template_class: template.template_class,
     });
 
-  const fromMessage = (message, type) => {
-    const reference = {
-      ref_label: 'A',
-      kind: 'message',
-      value: message.reference,
-      message_id: message.id,
-      title: message.subject,
-      amplifying: `REF A IS ${message.reference} ${message.dtg}`,
-    };
-
-    const opening = {
-      corrected_copy: `This corrected copy replaces ${message.reference} in its entirety. The error in the original is corrected as follows: `,
-      update: `This message amends ${message.reference}. Paragraphs changed are listed below; all other direction in the original remains in effect.`,
-      cancellation: `This message cancels ${message.reference} in its entirety with no force. Do not execute any direction contained in the original.`,
-    }[type];
-
-    const subject = {
-      corrected_copy: message.subject,
-      update: `${message.subject} — UPDATE`,
-      cancellation: `CANCELLATION OF ${message.reference}`,
-    }[type];
-
-    create({
-      subject,
-      message_type: message.type,
-      precedence: message.precedence,
-      classification: message.classification,
-      originator: message.originator,
-      action_addressees: [message.to].filter(Boolean),
-      info_addressees: (message.info || '').split(',').map((s) => s.trim()).filter(Boolean),
-      references: [reference],
-      paragraphs: [opening, ''],
-      derivation_type: type,
-      effect_on_source: EFFECT_ON_SOURCE[type] || 'none',
-      derived_from_message_id: message.id,
-      derived_from_reference: message.reference,
-    });
-  };
+  const fromMessage = (message, type) => create(derivationDraft(message, type));
 
   const messages = SAMPLE_MESSAGES.filter((m) =>
     `${m.reference} ${m.subject} ${m.originator}`.toLowerCase().includes(q.toLowerCase()),
@@ -122,7 +67,8 @@ export default function DraftNew() {
         </Link>
         <h1 className="mt-2 font-heading text-[24px] font-semibold tracking-tight text-ink">Start a draft</h1>
         <p className="mt-1 text-[13px] text-mutedink">
-          Begin from a standard template, or derive a corrected copy, update or cancellation from an existing message.
+          Begin from a standard template, or derive a corrected copy, update or cancellation from a message your command
+          originated. A reply to any message starts from its record in Messages.
         </p>
       </header>
 
@@ -195,30 +141,47 @@ export default function DraftNew() {
             <p className="text-[12.5px] font-semibold text-ink">
               Derive from {selected.reference} — {selected.subject}
             </p>
-            <p className="mt-1 text-[11.5px] leading-snug text-mutedink">
-              The source message is carried as reference A and linked, so the draft and the released record both point
-              at it. The original is marked only when the new message is released.
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {DERIVATION_OPTIONS.map((option) => {
-                const Icon = DERIVATION_ICON[option.value];
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => fromMessage(selected, option.value)}
-                    className="rounded-sm border border-line bg-secondary/40 p-3 text-left transition-colors hover:border-navy-600/50 hover:bg-navy-100/50 disabled:opacity-60"
-                  >
-                    <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-                      <Icon className="h-3.5 w-3.5 text-navy-600" aria-hidden="true" />
-                      {option.label}
-                    </span>
-                    <span className="mt-1 block text-[11.5px] leading-snug text-mutedink">{option.note}</span>
-                  </button>
-                );
-              })}
-            </div>
+
+            {isOwnMessage(selected) ? (
+              <>
+                <p className="mt-1 text-[11.5px] leading-snug text-mutedink">
+                  The source message is carried as reference A and linked, so the draft and the released record both
+                  point at it. The original is marked only when the new message is released.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {DERIVATION_OPTIONS.map((option) => {
+                    const Icon = DERIVATION_ICON[option.value];
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => fromMessage(selected, option.value)}
+                        className="rounded-sm border border-line bg-secondary/40 p-3 text-left transition-colors hover:border-navy-600/50 hover:bg-navy-100/50 disabled:opacity-60"
+                      >
+                        <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
+                          <Icon className="h-3.5 w-3.5 text-navy-600" aria-hidden="true" />
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-[11.5px] leading-snug text-mutedink">{option.note}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 rounded-sm border border-line bg-secondary/50 px-3 py-2.5 text-[11.5px] leading-snug text-mutedink">
+                Originated by {selected.originator}. A corrected copy, update or cancellation may only be issued by the
+                command that originated the message, so this one cannot be changed here.{' '}
+                <Link
+                  to={`/messages/${selected.id}`}
+                  className="font-semibold text-navy-600 underline underline-offset-2"
+                >
+                  Open the record
+                </Link>{' '}
+                to draft a response instead.
+              </p>
+            )}
           </div>
         )}
       </section>

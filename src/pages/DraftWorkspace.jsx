@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -30,7 +30,6 @@ export default function DraftWorkspace() {
   const { id } = useParams();
   const { toast } = useToast();
   const [draft, setDraft] = useState(null);
-  const [events, setEvents] = useState([]);
   const [workflows, setWorkflows] = useState([]);
   const [authorities, setAuthorities] = useState([]);
   const [user, setUser] = useState(null);
@@ -38,28 +37,18 @@ export default function DraftWorkspace() {
   const [missing, setMissing] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const loadEvents = useCallback(async () => {
-    const { items } = await base44.entities.RoutingEvent.filter(
-      { draft_id: id },
-      { sort: 'created_date', limit: 200 },
-    );
-    setEvents(items || []);
-  }, [id]);
-
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const [record, ev, wf, auth, me] = await Promise.all([
+        const [record, wf, auth, me] = await Promise.all([
           base44.entities.DraftMessage.get(id),
-          base44.entities.RoutingEvent.filter({ draft_id: id }, { sort: 'created_date', limit: 200 }),
           base44.entities.RoutingWorkflow.list(),
           base44.entities.ReleaseAuthority.list(),
           base44.auth.me(),
         ]);
         if (!alive) return;
         setDraft(record);
-        setEvents(ev.items || []);
         setWorkflows(wf || []);
         setAuthorities(auth || []);
         setUser(me);
@@ -161,7 +150,6 @@ export default function DraftWorkspace() {
         },
         routedTo,
       );
-      await loadEvents();
       toast({
         title: 'Submitted for routing',
         description: `Route: ${route.map((s) => s.title).join(' → ')}`,
@@ -201,7 +189,6 @@ export default function DraftWorkspace() {
         step_title: step.title,
         comment: '',
       });
-      await loadEvents();
       toast({ title: 'Advanced', description: `Now with ${next.assignee_name || next.title}.` });
     } finally {
       setBusy(false);
@@ -250,7 +237,6 @@ export default function DraftWorkspace() {
         comment: `Released as ${authority.designation}. The transmitted text is frozen.`,
         visible_to_all: true,
       });
-      await loadEvents();
       toast({ title: 'Released', description: 'The record is frozen and the transmitted text is fixed.' });
     } finally {
       setBusy(false);
@@ -282,7 +268,6 @@ export default function DraftWorkspace() {
         step_title: step.title,
         comment,
       });
-      await loadEvents();
       toast({ title: 'Returned to drafter', description: 'The comment is on the route log.' });
     } finally {
       setBusy(false);
@@ -299,7 +284,6 @@ export default function DraftWorkspace() {
         to_status: 'withdrawn',
         comment: 'Withdrawn by the drafter.',
       });
-      await loadEvents();
       toast({ title: 'Draft withdrawn', description: 'Retained for the record; it was never released.' });
     } finally {
       setBusy(false);
@@ -419,8 +403,8 @@ export default function DraftWorkspace() {
             />
           </Panel>
 
-          <Panel title="Routing and audit">
-            <RoutingTimeline draft={draft} events={events} />
+          <Panel title="Routing chain">
+            <RoutingTimeline draft={draft} />
           </Panel>
         </div>
       </div>

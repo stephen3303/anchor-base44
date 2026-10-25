@@ -7,6 +7,7 @@ import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
 import LifecycleBadge from '@/components/anchor/LifecycleBadge';
 import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSampleData';
 import { EFFECT_LABEL } from '@/lib/drafting';
+import MessageActionBar from '@/components/anchor/MessageActionBar';
 
 const Meta = ({ label, value }) => (
   <div>
@@ -85,6 +86,7 @@ export default function MessageRecord() {
           <p className="text-[12px] text-mutedink">
             Immutable official record. Status changes arrive as newer messages — this text is never edited.
           </p>
+          <MessageActionBar message={message} />
         </header>
 
         {(replacement || superseding.length > 0) && (
