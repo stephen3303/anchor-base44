@@ -8,6 +8,7 @@ import LifecycleBadge from '@/components/anchor/LifecycleBadge';
 import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSampleData';
 import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
+import MessageOriginalText from '@/components/anchor/MessageOriginalText';
 
 const Meta = ({ label, value }) => (
   <div>
@@ -117,7 +118,7 @@ export default function MessageRecord() {
         )}
 
         <div className="px-4 py-4 sm:px-6">
-          <dl className="grid gap-3 border-b border-line pb-4 sm:grid-cols-3">
+          <dl className="grid gap-3 sm:grid-cols-3">
             <Meta label="DTG" value={message.dtg} />
             <Meta label="Received" value={formatZulu(message.received)} />
             <Meta label="Originator (FM)" value={message.originator} />
@@ -126,15 +127,9 @@ export default function MessageRecord() {
             <Meta label="Communities" value={(message.communities || []).join(', ')} />
           </dl>
 
-          <div className="space-y-5 pt-4">
-            {message.sections.map((section) => (
-              <section key={section.heading}>
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">{section.heading}</h2>
-                <p className="official-text mt-1.5 text-[14px] text-ink">{section.body}</p>
-              </section>
-            ))}
-          </div>
         </div>
+
+        <MessageOriginalText message={message} />
 
         {related.length > 0 && (
           <div className="border-t border-line px-4 py-4 sm:px-6">
