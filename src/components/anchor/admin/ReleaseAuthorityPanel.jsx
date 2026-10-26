@@ -6,12 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { MESSAGE_TYPES } from '@/data/draftOptions';
+import { shortName } from '@/lib/personnel';
+import PersonnelSelect from './PersonnelSelect';
 
 /**
  * Who may release. The commanding officer holds it inherently and may designate
  * subordinates, optionally limited to a set of message types.
+ *
+ * Designations are made from the personnel records, so the authority is held by a
+ * person in a rank and a position — and the record's email is what the release is
+ * checked against when they sign in.
  */
-export default function ReleaseAuthorityPanel({ authorities, users, onAdd, onRemove, busy }) {
+export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, onRemove, busy }) {
   const [email, setEmail] = useState('');
   const [designation, setDesignation] = useState('');
   const [scope, setScope] = useState('all');
@@ -19,15 +25,15 @@ export default function ReleaseAuthorityPanel({ authorities, users, onAdd, onRem
   const [error, setError] = useState('');
 
   const add = () => {
-    const person = users.find((u) => u.email === email);
+    const person = (personnel || []).find((p) => p.email && p.email === email);
     if (!person || !designation.trim()) {
-      setError('Select a user and give the designation they hold.');
+      setError('Pick a person from the roster and give the designation they hold.');
       return;
     }
     setError('');
     onAdd({
       user_email: person.email,
-      user_name: person.full_name || person.email,
+      user_name: shortName(person),
       designation: designation.trim(),
       is_commanding_officer: isCo,
       scope_message_types: scope === 'all' ? [] : [scope],
@@ -76,19 +82,21 @@ export default function ReleaseAuthorityPanel({ authorities, users, onAdd, onRem
       <div className="space-y-3 border-t border-line bg-secondary/40 px-4 py-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">User</Label>
-            <Select value={email} onValueChange={setEmail}>
-              <SelectTrigger className="h-9 text-[13px]">
-                <SelectValue placeholder="Select an app user" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((u) => (
-                  <SelectItem key={u.email} value={u.email} className="text-[13px]">
-                    {u.full_name || u.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">
+              Person on the roster
+            </Label>
+            <PersonnelSelect
+              personnel={personnel}
+              value={email}
+              onChange={(person) => {
+                if (!person) return;
+                setEmail(person.email);
+                setDesignation(person.position || '');
+                setIsCo(/commanding officer/i.test(person.position || ''));
+              }}
+              placeholder="Select from the roster"
+              className="h-9 text-[13px]"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -129,6 +137,12 @@ export default function ReleaseAuthorityPanel({ authorities, users, onAdd, onRem
         </div>
 
         {error && <p className="text-[11.5px] font-semibold text-lifecycle-cancelled">{error}</p>}
+        {!(personnel || []).length && (
+          <p className="text-[11.5px] text-mutedink">
+            The roster is empty. Release authority is designated from the personnel records, so add people under Admin →
+            Personnel first.
+          </p>
+        )}
 
         <Button type="button" size="sm" onClick={add} disabled={busy} className="gap-1.5 text-[12.5px]">
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />

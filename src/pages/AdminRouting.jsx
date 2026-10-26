@@ -14,23 +14,23 @@ export default function AdminRouting() {
   const [workflows, setWorkflows] = useState([]);
   const [authorities, setAuthorities] = useState([]);
   const [setting, setSetting] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [personnel, setPersonnel] = useState([]);
   const [user, setUser] = useState(null);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    const [wf, auth, people, me, command] = await Promise.all([
+    const [wf, auth, roster, me, command] = await Promise.all([
       base44.entities.RoutingWorkflow.list(),
       base44.entities.ReleaseAuthority.list(),
-      base44.entities.User.list(),
+      base44.entities.Personnel.list({ sort: 'last_name', limit: 200 }),
       base44.auth.me(),
       loadCommandSettings(),
     ]);
     setWorkflows(wf || []);
     setAuthorities(auth || []);
-    setUsers(people || []);
+    setPersonnel(roster?.items || []);
     setUser(me);
     setSetting(command);
   };
@@ -142,8 +142,9 @@ export default function AdminRouting() {
         </h1>
         <p className="mt-1 text-[13px] leading-relaxed text-mutedink">
           Define the chains a message follows by type and originator, designate who holds release authority, and set the
-          transmission settings every released message obeys. Every advance, kick-back and release against these chains
-          is written to an append-only route log.
+          transmission settings every released message obeys. Routing steps and release authority are drawn from the
+          personnel roster, so a step is held by a person in a rank and position rather than by a login. Every advance,
+          kick-back and release against these chains is written to an append-only route log.
         </p>
       </header>
 
@@ -159,7 +160,7 @@ export default function AdminRouting() {
 
       <ReleaseAuthorityPanel
         authorities={authorities}
-        users={users}
+        personnel={personnel}
         onAdd={addAuthority}
         onRemove={removeAuthority}
         busy={busy}
@@ -193,7 +194,7 @@ export default function AdminRouting() {
           <div className="p-4">
             <RoutingWorkflowEditor
               workflow={editing.id ? editing : null}
-              users={users}
+              personnel={personnel}
               onSave={saveWorkflow}
               onCancel={() => setEditing(null)}
               busy={busy}
