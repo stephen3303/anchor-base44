@@ -1,0 +1,66 @@
+{
+  "name": "Acknowledgement",
+  "type": "object",
+  "properties": {
+    "message_id": {
+      "type": "string"
+    },
+    "message_reference": {
+      "type": "string"
+    },
+    "message_subject": {
+      "type": "string"
+    },
+    "precedence": {
+      "type": "string"
+    },
+    "due_at": {
+      "type": "string"
+    },
+    "acknowledged_at": {
+      "type": "string"
+    },
+    "ack_status": {
+      "type": "string",
+      "enum": [
+        "on_time",
+        "late"
+      ],
+      "default": "on_time"
+    },
+    "user_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "message_id",
+    "acknowledged_at"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

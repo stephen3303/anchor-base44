@@ -6,13 +6,16 @@ import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import AppFooter from './AppFooter';
 import AlertStrip from './AlertStrip';
-import { isOverdue, mandatoryAcks } from '@/data/anchorSampleData';
+import { isOverdue } from '@/data/anchorSampleData';
+import { useAuth } from '@/lib/AuthContext';
+import useAcknowledgements from '@/hooks/useAcknowledgements';
 
 export default function AppLayout() {
   const [emcon, setEmcon] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuth();
 
-  const pending = mandatoryAcks();
+  const { pending } = useAcknowledgements(user);
   const overdue = pending.filter(isOverdue).length;
 
   return (

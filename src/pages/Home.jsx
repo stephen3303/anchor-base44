@@ -16,12 +16,14 @@ import MandatoryAckCard from '@/components/anchor/MandatoryAckCard';
 import TrafficMiniList from '@/components/anchor/TrafficMiniList';
 import StatusChangeList from '@/components/anchor/StatusChangeList';
 import OpenActionList from '@/components/anchor/OpenActionList';
+import { useAuth } from '@/lib/AuthContext';
+import useAcknowledgements from '@/hooks/useAcknowledgements';
+import { useToast } from '@/components/ui/use-toast';
 import {
   CURRENT_USER,
   formatZulu,
   isOverdue,
   latestTraffic,
-  mandatoryAcks,
   openActionItems,
   statusChanges,
   unreadCount,
@@ -34,7 +36,10 @@ const greetingFor = (hour) => {
 };
 
 export default function Home() {
-  const pending = useMemo(() => mandatoryAcks(), []);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { pending, acknowledge } = useAcknowledgements(user);
+  const [busy, setBusy] = useState(false);
   const traffic = useMemo(() => latestTraffic(6), []);
   const changes = useMemo(() => statusChanges(), []);
   const actions = useMemo(() => openActionItems(), []);
@@ -42,6 +47,23 @@ export default function Home() {
   const unread = unreadCount();
 
   const [ackTarget, setAckTarget] = useState(null);
+
+  const confirmAcknowledgement = async () => {
+    setBusy(true);
+    try {
+      const row = await acknowledge(ackTarget);
+      const at = formatZulu(row.acknowledged_at);
+      setAckTarget(null);
+      toast({
+        title: 'Acknowledgement recorded',
+        description: `${row.message_reference} · ${at} · ${
+          row.ack_status === 'late' ? 'recorded late' : 'recorded on time'
+        }.`,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 anchor-fade-in">
@@ -138,16 +160,10 @@ export default function Home() {
           </div>
 
           <ul className="space-y-1.5 text-[12.5px] text-mutedink">
-            <li>• Your acknowledgement is recorded against your account with the Zulu time and your command.</li>
+            <li>• Your acknowledgement is recorded against your account with the Zulu time it was given.</li>
             <li>• An acknowledgement cannot be withdrawn, corrected or delegated after it is recorded.</li>
-            <li>• The action, your device and the result are written to the append-only audit log.</li>
             <li>• Past the due time, the pending item escalates to the role named in the alert rule.</li>
           </ul>
-
-          <div className="rounded-sm border border-gold/50 bg-[#FFF6DE] px-3 py-2 text-[12px] text-ink">
-            Preview only — acknowledgements are not recorded yet. Recording, escalation and the audit chain arrive with
-            the next build step.
-          </div>
 
           <DialogFooter className="gap-2">
             <Button
@@ -158,8 +174,13 @@ export default function Home() {
             >
               Cancel
             </Button>
-            <Button size="sm" className="h-9 bg-navy-800 text-[12.5px]" disabled title="Available after acknowledgement recording is built">
-              Confirm acknowledgement
+            <Button
+              size="sm"
+              className="h-9 bg-navy-800 text-[12.5px]"
+              onClick={confirmAcknowledgement}
+              disabled={busy}
+            >
+              {busy ? 'Recording…' : 'Confirm acknowledgement'}
             </Button>
           </DialogFooter>
         </DialogContent>
