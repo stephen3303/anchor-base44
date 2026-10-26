@@ -20,6 +20,7 @@ import Admin from '@/pages/Admin';
 import Audit from '@/pages/Audit';
 import Reports from '@/pages/Reports';
 import Simulators from '@/pages/Simulators';
+import NetworkTopology from '@/pages/NetworkTopology';
 import Subscriptions from '@/pages/Subscriptions';
 import Briefings from '@/pages/Briefings';
 import WatchTurnover from '@/pages/WatchTurnover';
@@ -74,6 +75,7 @@ const AuthenticatedApp = () => {
           <Route path="/drafting/:id" element={<DraftWorkspace />} />
           <Route path="/admin/routing" element={<AdminRouting />} />
           <Route path="/simulators" element={<Simulators />} />
+          <Route path="/network-topology" element={<NetworkTopology />} />
           <Route path="/search" element={<Navigate to="/messages" replace />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/briefings" element={<Briefings />} />
