@@ -25,6 +25,7 @@ const CATEGORY_BY_ACTION = {
   sync_replayed: 'system',
   turnover_saved: 'act',
   profile_updated: 'admin',
+  system_fault: 'system',
 };
 
 export default async function (req) {

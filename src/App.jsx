@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import ErrorBoundary from '@/components/anchor/ErrorBoundary';
 import AppLayout from '@/components/anchor/AppLayout';
 import Home from '@/pages/Home';
 import Messages from '@/pages/Messages';
@@ -96,7 +97,10 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <AuthenticatedApp />
+          {/* Top-level net: catches a fault in the shell itself, which the inner boundary cannot. */}
+          <ErrorBoundary>
+            <AuthenticatedApp />
+          </ErrorBoundary>
         </Router>
         <Toaster />
       </QueryClientProvider>

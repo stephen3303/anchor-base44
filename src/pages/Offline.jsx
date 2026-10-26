@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { HardDrive } from 'lucide-react';
 import SectionCard from '@/components/anchor/SectionCard';
 import ConnectivityPanel from '@/components/anchor/offline/ConnectivityPanel';
+import DiagnosticsPanel from '@/components/anchor/diagnostics/DiagnosticsPanel';
 import SyncQueueTable from '@/components/anchor/offline/SyncQueueTable';
 import useConnectivity from '@/hooks/useConnectivity';
 import { readQueue } from '@/lib/syncQueue';
@@ -74,6 +75,13 @@ export default function Offline() {
           The queue survives a reload of this workstation but not a move to another one. A queue held on the command
           server follows with C2OIX ingest; until then a held release can simply be released again from the draft.
         </p>
+      </SectionCard>
+
+      <SectionCard
+        title="Fault statements"
+        hint="What to send the supporting activity when the portal fails"
+      >
+        <DiagnosticsPanel />
       </SectionCard>
     </div>
   );

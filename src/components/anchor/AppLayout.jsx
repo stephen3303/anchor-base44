@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ErrorBoundary from './ErrorBoundary';
+import { rememberIdentity } from '@/lib/diagnostics';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
@@ -17,6 +19,12 @@ export default function AppLayout() {
   const { offline, local, external } = useConnectivity();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
+  const { pathname } = useLocation();
+
+  // A statement has to name the account even when the command server is unreachable.
+  useEffect(() => {
+    rememberIdentity(user);
+  }, [user]);
 
   const { pending } = useAcknowledgements(user);
   const overdue = pending.filter(isOverdue).length;
@@ -62,7 +70,10 @@ export default function AppLayout() {
           <IngestStatusBanner />
 
           <main className={cn('flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7')}>
-            <Outlet />
+            {/* Keyed on the screen, so moving off a stopped screen clears the fault. */}
+            <ErrorBoundary key={pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
 
           <AppFooter local={local} external={external} />

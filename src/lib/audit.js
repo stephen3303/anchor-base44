@@ -24,6 +24,7 @@ export const AUDIT_ACTION_LABEL = {
   sync_replayed: 'Queued action synchronised',
   turnover_saved: 'Watch turnover saved',
   profile_updated: 'Profile updated',
+  system_fault: 'System fault reported',
 };
 
 export const canonicalPayload = (row) =>
