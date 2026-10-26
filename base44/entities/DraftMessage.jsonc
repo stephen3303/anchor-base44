@@ -152,6 +152,7 @@
         "original",
         "corrected_copy",
         "update",
+        "final",
         "cancellation"
       ],
       "default": "original"

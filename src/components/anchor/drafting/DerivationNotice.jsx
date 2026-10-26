@@ -18,9 +18,11 @@ export default function DerivationNotice({ draft, sourceMessage }) {
           {effect ? ` — on release the original is marked ${effect}` : ''}
         </p>
         <p className="mt-0.5 text-mutedink">
-          {released
-            ? 'Released. The original record now shows this message as its replacement.'
-            : 'Not yet released. The original record is unchanged until this message is released.'}
+          {effect
+            ? released
+              ? 'Released. The original record now shows this message as its replacement.'
+              : 'Not yet released. The original record is unchanged until this message is released.'
+            : 'This message carries the original as its reference and does not change it.'}
           {sourceMessage ? ` ${sourceMessage.subject}` : ''}
         </p>
         {draft.derived_from_message_id && (

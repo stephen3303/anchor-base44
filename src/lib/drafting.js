@@ -51,6 +51,7 @@ export const DERIVATION_LABEL = {
   original: 'Original',
   corrected_copy: 'Corrected copy',
   update: 'Update',
+  final: 'Final',
   cancellation: 'Cancellation',
 };
 

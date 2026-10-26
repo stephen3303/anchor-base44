@@ -58,17 +58,20 @@ const DERIVATION_OPENING = {
     'This corrected copy replaces the original in its entirety. The error in the original is corrected as follows: ',
   update:
     'This message amends the original. Paragraphs changed are listed below; all other direction in the original remains in effect.',
+  final:
+    'FINAL. This message concludes the matter addressed in REF A. No further reports or amendments on the subject are anticipated.',
   cancellation: 'CANCEL REF A.',
 };
 
 const DERIVATION_SUBJECT = {
   corrected_copy: (message) => message.subject,
   update: (message) => `${message.subject} — UPDATE`,
+  final: (message) => `${message.subject} — FINAL`,
   // NTP 3(J) ¶403b: a cancellation carries the subject of the message it cancels.
   cancellation: (message) => message.subject,
 };
 
-/** A corrected copy, update or cancellation of a message this command originated. */
+/** A corrected copy, update, final or cancellation of a message this command originated. */
 export const derivationDraft = (message, type) => ({
   subject: DERIVATION_SUBJECT[type](message),
   message_type: message.type,

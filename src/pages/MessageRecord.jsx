@@ -159,8 +159,8 @@ export default function MessageRecord() {
               )}
               {superseding.map((draft) => (
                 <li key={draft.id} className="text-[12.5px] text-ink">
-                  {EFFECT_LABEL[draft.effect_on_source] || 'REPLACED'} by released{' '}
-                  {draft.derivation_type === 'cancellation' ? 'cancellation' : 'message'} — {draft.subject}{' '}
+                  {EFFECT_LABEL[draft.effect_on_source] || (draft.derivation_type === 'final' ? 'CONCLUDED' : 'REPLACED')}{' '}
+                  by released {draft.derivation_type === 'cancellation' ? 'cancellation' : 'message'} — {draft.subject}{' '}
                   <Link to={`/drafting/${draft.id}`} className="font-semibold text-navy-600 underline underline-offset-2">
                     open
                   </Link>

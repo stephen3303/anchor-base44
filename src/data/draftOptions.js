@@ -9,6 +9,7 @@ export const CLASSIFICATIONS = ['UNCLASSIFIED', 'CONFIDENTIAL', 'SECRET'];
 export const DERIVATION_OPTIONS = [
   { value: 'corrected_copy', label: 'Corrected copy', note: 'Reissues the message in full with the error corrected. Supersedes the original.' },
   { value: 'update', label: 'Update / amendment', note: 'Amends specific paragraphs. All other direction in the original stands.' },
+  { value: 'final', label: 'Final', note: 'Concludes the matter the original opened. The original record is not changed.' },
   { value: 'cancellation', label: 'Cancellation', note: 'Cancels the message in its entirety with no force.' },
 ];
 

@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Ban, FileText, RefreshCw, Search } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Search } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
+import NewTemplateDialog from '@/components/anchor/NewTemplateDialog';
+import SourceMessageActions from '@/components/anchor/drafting/SourceMessageActions';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
-import { DERIVATION_OPTIONS } from '@/data/draftOptions';
-import { BASE_DRAFT, derivationDraft, isOwnMessage } from '@/lib/draftPrefill';
+import { BASE_DRAFT, derivationDraft, responseDraft } from '@/lib/draftPrefill';
 import { useToast } from '@/components/ui/use-toast';
-
-const DERIVATION_ICON = { corrected_copy: RefreshCw, update: FileText, cancellation: Ban };
 
 export default function DraftNew() {
   const navigate = useNavigate();
@@ -20,14 +18,21 @@ export default function DraftNew() {
   const [selected, setSelected] = useState(null);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+
+  const loadTemplates = async () => {
+    const list = await base44.entities.MessageTemplate.list();
+    setTemplates(list.filter((t) => t.active !== false));
+  };
 
   useEffect(() => {
     (async () => {
-      const [list, me] = await Promise.all([base44.entities.MessageTemplate.list(), base44.auth.me()]);
-      setTemplates(list.filter((t) => t.active !== false));
+      const [me] = await Promise.all([base44.auth.me(), loadTemplates()]);
       setUser(me);
     })();
   }, []);
+
+  const isAdmin = user?.role === 'admin';
 
   const create = async (draft) => {
     setBusy(true);
@@ -54,6 +59,8 @@ export default function DraftNew() {
 
   const fromMessage = (message, type) => create(derivationDraft(message, type));
 
+  const fromResponse = (message) => create(responseDraft(message));
+
   const messages = SAMPLE_MESSAGES.filter((m) =>
     `${m.reference} ${m.subject} ${m.originator}`.toLowerCase().includes(q.toLowerCase()),
   ).slice(0, 30);
@@ -67,8 +74,8 @@ export default function DraftNew() {
         </Link>
         <h1 className="mt-2 font-heading text-[24px] font-semibold tracking-tight text-ink">Start a draft</h1>
         <p className="mt-1 text-[13px] text-mutedink">
-          Begin from a standard template, or derive a corrected copy, update or cancellation from a message your command
-          originated. A reply to any message starts from its record in Messages.
+          Begin from a standard template, or choose an existing message to answer, capture as a template, or derive a
+          corrected copy, update, final or cancellation from one your command originated.
         </p>
       </header>
 
@@ -94,11 +101,29 @@ export default function DraftNew() {
               <p className="mt-2 text-[11.5px] leading-snug text-mutedink">{template.guidance}</p>
             </button>
           ))}
+          {isAdmin && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setTemplateOpen(true)}
+              className="flex flex-col justify-center rounded-md border border-dashed border-navy-600/50 bg-navy-100/20 p-4 text-left transition-colors hover:border-navy-600 hover:bg-navy-100/50 disabled:opacity-60"
+            >
+              <span className="flex items-center gap-2 text-[13.5px] font-semibold text-navy-600">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                New template from scratch
+              </span>
+              <span className="mt-1.5 text-[12px] leading-snug text-mutedink">
+                Build an empty template — setlines, addressees and paragraph prompts — without capturing a message.
+              </span>
+            </button>
+          )}
           {templates.length === 0 && (
             <p className="text-[12px] text-mutedink">No templates available. An administrator must publish one.</p>
           )}
         </div>
       </section>
+
+      <NewTemplateDialog open={templateOpen} onOpenChange={setTemplateOpen} onCreated={loadTemplates} />
 
       <section className="space-y-3">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">
@@ -137,52 +162,13 @@ export default function DraftNew() {
         </ul>
 
         {selected && (
-          <div className="rounded-md border border-navy-600/40 bg-white p-4 shadow-sm">
-            <p className="text-[12.5px] font-semibold text-ink">
-              Derive from {selected.reference} — {selected.subject}
-            </p>
-
-            {isOwnMessage(selected) ? (
-              <>
-                <p className="mt-1 text-[11.5px] leading-snug text-mutedink">
-                  The source message is carried as reference A and linked, so the draft and the released record both
-                  point at it. The original is marked only when the new message is released.
-                </p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {DERIVATION_OPTIONS.map((option) => {
-                    const Icon = DERIVATION_ICON[option.value];
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        disabled={busy}
-                        onClick={() => fromMessage(selected, option.value)}
-                        className="rounded-sm border border-line bg-secondary/40 p-3 text-left transition-colors hover:border-navy-600/50 hover:bg-navy-100/50 disabled:opacity-60"
-                      >
-                        <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-                          <Icon className="h-3.5 w-3.5 text-navy-600" aria-hidden="true" />
-                          {option.label}
-                        </span>
-                        <span className="mt-1 block text-[11.5px] leading-snug text-mutedink">{option.note}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <p className="mt-2 rounded-sm border border-line bg-secondary/50 px-3 py-2.5 text-[11.5px] leading-snug text-mutedink">
-                Originated by {selected.originator}. A corrected copy, update or cancellation may only be issued by the
-                command that originated the message, so this one cannot be changed here.{' '}
-                <Link
-                  to={`/messages/${selected.id}`}
-                  className="font-semibold text-navy-600 underline underline-offset-2"
-                >
-                  Open the record
-                </Link>{' '}
-                to draft a response instead.
-              </p>
-            )}
-          </div>
+          <SourceMessageActions
+            message={selected}
+            busy={busy}
+            canTemplate={isAdmin}
+            onResponse={fromResponse}
+            onDerive={fromMessage}
+          />
         )}
       </section>
     </div>
