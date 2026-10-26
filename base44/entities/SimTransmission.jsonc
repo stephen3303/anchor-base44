@@ -1,0 +1,83 @@
+{
+  "name": "SimTransmission",
+  "type": "object",
+  "properties": {
+    "draft_id": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "precedence": {
+      "type": "string"
+    },
+    "released_at": {
+      "type": "string"
+    },
+    "released_by_name": {
+      "type": "string"
+    },
+    "rendered_text": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "held",
+        "transmitted"
+      ],
+      "default": "held"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "transmitted_at": {
+      "type": "string"
+    },
+    "receipt": {
+      "type": "string"
+    },
+    "last_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "draft_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

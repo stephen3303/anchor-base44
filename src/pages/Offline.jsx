@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { HardDrive } from 'lucide-react';
 import SectionCard from '@/components/anchor/SectionCard';
 import ConnectivityPanel from '@/components/anchor/offline/ConnectivityPanel';
@@ -34,6 +35,13 @@ export default function Offline() {
         hint="The command server is measured; the circuit is reported by the watch"
       >
         <ConnectivityPanel queueLength={held.length} />
+        <p className="mt-3 text-[11.5px] leading-relaxed text-mutedink">
+          Testing: the external C2OIX server and the local ANCHOR server can be driven from{' '}
+          <Link to="/simulators" className="font-semibold text-navy-600 underline underline-offset-2">
+            Server simulators
+          </Link>
+          .
+        </p>
       </SectionCard>
 
       <div className="grid gap-5 lg:grid-cols-2">

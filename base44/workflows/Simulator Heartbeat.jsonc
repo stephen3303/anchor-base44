@@ -1,0 +1,63 @@
+{
+  "name": "Simulator Heartbeat",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/5 * * * *",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Pulses the two server simulators every five minutes: the local ANCHOR server beats the C2OIX circuit and holds anything released, then the C2OIX server hands over whatever is due.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "simulator_heartbeat",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "beat_local_server": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "localServerSimulator",
+            "args": {
+              "action": "tick"
+            }
+          },
+          "then": "hand_over_due_traffic",
+          "x-base44": {
+            "title": "Beat the local server",
+            "description": "Heartbeat, hold releases"
+          }
+        }
+      },
+      {
+        "hand_over_due_traffic": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "c2oixSimulator",
+            "args": {
+              "action": "tick"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Hand over due traffic",
+            "description": "One message at most"
+          }
+        }
+      }
+    ]
+  }
+}

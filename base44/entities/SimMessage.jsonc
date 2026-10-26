@@ -1,0 +1,111 @@
+{
+  "name": "SimMessage",
+  "type": "object",
+  "properties": {
+    "sequence": {
+      "type": "number"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "dtg": {
+      "type": "string"
+    },
+    "precedence": {
+      "type": "string"
+    },
+    "classification": {
+      "type": "string"
+    },
+    "originator": {
+      "type": "string"
+    },
+    "action_addressees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "info_addressees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "communities": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "size_kb": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "deferred",
+        "ingested"
+      ],
+      "default": "queued"
+    },
+    "scheduled_for": {
+      "type": "string"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "attempted_at": {
+      "type": "string"
+    },
+    "dispatched_at": {
+      "type": "string"
+    },
+    "ingested_at": {
+      "type": "string"
+    },
+    "last_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "reference",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
