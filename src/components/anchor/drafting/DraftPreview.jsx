@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import moment from 'moment';
 import { Check, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ClassificationStrip from '@/components/anchor/ClassificationStrip';
+import { useAuth } from '@/lib/AuthContext';
+import { recordAudit } from '@/lib/audit';
 import { renderMessage } from '@/lib/ntp';
 import { formatZulu } from '@/data/anchorSampleData';
 

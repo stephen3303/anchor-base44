@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import MessageFilters from '@/components/anchor/MessageFilters';
+import { useNavigate } from 'react-router-dom';
+import moment from 'moment';
+import MessageFilters, { EMPTY_FILTERS } from '@/components/anchor/MessageFilters';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MessageTable from '@/components/anchor/MessageTable';
 import MessagePreviewPane from '@/components/anchor/MessagePreviewPane';
-import { SAMPLE_MESSAGES, unreadCount } from '@/data/anchorSampleData';
+import { useAuth } from '@/lib/AuthContext';
+import useMessageStates from '@/hooks/useMessageStates';
+import { recordAudit } from '@/lib/audit';
+import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 
 const ALL = 'all';
 const ROW_LIMITS = ['25', '50', '100', ALL];
@@ -13,6 +18,10 @@ const matches = (message, filters) => {
   if (filters.type !== ALL && message.type !== filters.type) return false;
   if (filters.lifecycle !== ALL && message.lifecycle !== filters.lifecycle) return false;
   if (filters.read !== ALL && message.read_state !== filters.read) return false;
+  if (filters.originator !== ALL && message.originator !== filters.originator) return false;
+  if (filters.community !== ALL && !(message.communities || []).includes(filters.community)) return false;
+  if (filters.since !== ALL && moment.utc(message.received).isBefore(moment.utc().subtract(Number(filters.since), 'hours')))
+    return false;
   if (!filters.q) return true;
 
   // Keyword search covers the official record only — deliberately never the AI summary.
@@ -31,12 +40,30 @@ const matches = (message, filters) => {
 };
 
 export default function Messages() {
-  // Local view-model copy so read/star state behaves like an inbox in the prototype.
-  const [rows, setRows] = useState(() => SAMPLE_MESSAGES.map((m) => ({ ...m })));
-  const [filters, setFilters] = useState({ q: '', precedence: ALL, type: ALL, lifecycle: ALL, read: ALL });
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { markRead, toggleStar: persistStar, byMessageId, states } = useMessageStates(user);
+
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState(null);
   const [rowLimit, setRowLimit] = useState(ALL);
   const previewRef = useRef(null);
+  const lastSearch = useRef('');
+
+  // Read and star state is held per user, so a report can tell "acknowledged"
+  // apart from "merely read".
+  const rows = useMemo(
+    () =>
+      SAMPLE_MESSAGES.map((message) => {
+        const state = byMessageId(message.id);
+        return {
+          ...message,
+          read_state: state?.read_at ? 'read' : message.read_state,
+          starred: Boolean(state?.starred),
+        };
+      }),
+    [byMessageId, states],
+  );
 
   const filtered = useMemo(() => rows.filter((m) => matches(m, filters)), [rows, filters]);
   const visible = useMemo(
@@ -44,18 +71,34 @@ export default function Messages() {
     [filtered, rowLimit],
   );
   const selected = rows.find((r) => r.id === selectedId) || null;
+  const unread = rows.filter((r) => r.read_state !== 'read').length;
 
+  // A search that returns nothing is still a search: record the ones that were run.
   useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setSelectedId(null);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+    const query = filters.q.trim();
+    if (query.length < 3 || query === lastSearch.current) return undefined;
+    const id = window.setTimeout(async () => {
+      lastSearch.current = query;
+      await recordAudit({
+        action: 'search_run',
+        target_type: 'search',
+        target_reference: query.slice(0, 80),
+        detail: `${filtered.length} matching records`,
+      });
+    }, 1200);
+    return () => window.clearTimeout(id);
+  }, [filters.q, filtered.length]);
 
-  const selectMessage = (message) => {
+  const selectMessage = async (message) => {
     setSelectedId(message.id);
-    setRows((prev) => prev.map((r) => (r.id === message.id ? { ...r, read_state: 'read' } : r)));
+    await markRead(message);
+    await recordAudit({
+      action: 'message_opened',
+      target_type: 'message',
+      target_id: message.id,
+      target_reference: message.reference,
+      detail: `${message.precedence} traffic opened from the inbox`,
+    });
     // Below the xl breakpoint the record opens under the list, so bring it into view.
     if (!window.matchMedia('(min-width: 1280px)').matches) {
       window.setTimeout(() => {
@@ -64,9 +107,37 @@ export default function Messages() {
     }
   };
 
-  const toggleStar = (id) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, starred: !r.starred } : r)));
+  const toggleStar = async (id) => {
+    const message = rows.find((r) => r.id === id);
+    if (message) await persistStar(message);
   };
+
+  // Keyboard triage: j and k walk the list, Enter opens the record, Esc closes it.
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return;
+
+      if (event.key === 'Escape') {
+        setSelectedId(null);
+        return;
+      }
+      if (event.key === 'Enter' && selectedId) {
+        navigate(`/messages/${selectedId}`);
+        return;
+      }
+      if (event.key !== 'j' && event.key !== 'k') return;
+
+      event.preventDefault();
+      const index = visible.findIndex((row) => row.id === selectedId);
+      const nextIndex = event.key === 'j' ? Math.min(index + 1, visible.length - 1) : Math.max(index - 1, 0);
+      const next = visible[index === -1 ? 0 : nextIndex];
+      if (next) selectMessage(next);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [visible, selectedId, navigate, rows]);
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-4 anchor-fade-in">
@@ -74,10 +145,10 @@ export default function Messages() {
         <div>
           <h1 className="font-heading text-[24px] font-semibold tracking-tight text-ink sm:text-[27px]">Messages</h1>
           <p className="mt-1 text-[13px] text-mutedink">
-            {filtered.length} of {rows.length} records shown · {unreadCount()} new or unread in the inbox · all times
-            Zulu
+            {filtered.length} of {rows.length} records shown · {unread} new or unread · all times Zulu
           </p>
         </div>
+        <p className="text-[11px] text-mutedink">j / k to walk the list · Enter opens the record · Esc closes the preview</p>
       </header>
 
       <MessageFilters value={filters} onChange={setFilters} />

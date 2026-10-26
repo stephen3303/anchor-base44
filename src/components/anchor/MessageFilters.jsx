@@ -8,18 +8,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MESSAGE_TYPES, PRECEDENCE_ORDER, SAMPLE_MESSAGES } from '@/data/anchorSampleData';
+import { COMMUNITIES, MESSAGE_TYPES, PRECEDENCE_ORDER, SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 
 const LIFECYCLES = ['ACTIVE', 'AMENDED', 'CORRECTED', 'CANCELLED', 'SUPERSEDED', 'EXPIRED'];
 const READ_STATES = ['new', 'unread', 'read'];
+const SINCE = [
+  ['all', 'Any time'],
+  ['24', 'Last 24 hours'],
+  ['72', 'Last 72 hours'],
+  ['168', 'Last 7 days'],
+];
 const ALL = 'all';
 
 const toOptions = (values) => [...new Set(values)].sort();
 
+const EMPTY = {
+  q: '',
+  precedence: ALL,
+  type: ALL,
+  lifecycle: ALL,
+  read: ALL,
+  originator: ALL,
+  community: ALL,
+  since: ALL,
+};
+
+/** One search surface: keyword over the official text, plus the structured filters. */
 export default function MessageFilters({ value, onChange }) {
   const set = (patch) => onChange({ ...value, ...patch });
-  const isFiltered =
-    value.q || value.precedence !== ALL || value.type !== ALL || value.lifecycle !== ALL || value.read !== ALL;
+  const isFiltered = Object.keys(EMPTY).some((key) => value[key] !== EMPTY[key]);
 
   return (
     <div className="rounded-md border border-line bg-white p-3 shadow-sm">
@@ -91,12 +108,53 @@ export default function MessageFilters({ value, onChange }) {
           </SelectContent>
         </Select>
 
+        <Select value={value.originator} onValueChange={(v) => set({ originator: v })}>
+          <SelectTrigger className="h-9 w-[190px] border-line text-[12.5px]" aria-label="Filter by originator">
+            <SelectValue placeholder="Originator" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All originators</SelectItem>
+            {toOptions(SAMPLE_MESSAGES.map((m) => m.originator)).map((originator) => (
+              <SelectItem key={originator} value={originator}>
+                {originator}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={value.community} onValueChange={(v) => set({ community: v })}>
+          <SelectTrigger className="h-9 w-[176px] border-line text-[12.5px]" aria-label="Filter by community">
+            <SelectValue placeholder="Community" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All communities</SelectItem>
+            {COMMUNITIES.map((community) => (
+              <SelectItem key={community} value={community}>
+                {community}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={value.since} onValueChange={(v) => set({ since: v })}>
+          <SelectTrigger className="h-9 w-[150px] border-line text-[12.5px]" aria-label="Filter by received date">
+            <SelectValue placeholder="Received" />
+          </SelectTrigger>
+          <SelectContent>
+            {SINCE.map(([key, label]) => (
+              <SelectItem key={key} value={key}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {isFiltered && (
           <Button
             variant="ghost"
             size="sm"
             className="h-9 gap-1.5 text-[12.5px] text-mutedink hover:text-ink"
-            onClick={() => onChange({ q: '', precedence: ALL, type: ALL, lifecycle: ALL, read: ALL })}
+            onClick={() => onChange({ ...EMPTY })}
           >
             <X className="h-3.5 w-3.5" />
             Clear
@@ -104,11 +162,12 @@ export default function MessageFilters({ value, onChange }) {
         )}
       </div>
       <p className="mt-2 text-[11px] text-mutedink">
-        Filtering {SAMPLE_MESSAGES.length} sample records in the browser. Server-side filtering, advanced date range
-        and saved searches arrive with the search build step.
+        Keyword search covers the official text and metadata. AI summaries are never searched and never appear in a
+        search snippet.
       </p>
     </div>
   );
 }
 
 export const ALL_VALUE = ALL;
+export const EMPTY_FILTERS = EMPTY;

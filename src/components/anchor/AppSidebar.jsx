@@ -9,21 +9,20 @@ import {
   Inbox,
   PenLine,
   Route,
-  Search,
   ShieldCheck,
   SlidersHorizontal,
   UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { pendingApprovals, unreadCount } from '@/data/anchorSampleData';
+import useSubscriptions from '@/hooks/useSubscriptions';
+import { unreadCount } from '@/data/anchorSampleData';
 
 const GROUPS = [
   {
     label: 'Read',
     items: [
       { to: '/', label: 'Home', icon: Home, end: true },
-      { to: '/messages', label: 'Messages', icon: Inbox, badge: unreadCount },
-      { to: '/search', label: 'Search', icon: Search },
+      { to: '/messages', label: 'Messages', icon: Inbox, badge: 'unread' },
     ],
   },
   {
@@ -41,7 +40,7 @@ const GROUPS = [
     items: [
       { to: '/reports', label: 'Reports', icon: BarChart3 },
       { to: '/audit', label: 'Audit & Integrity', icon: ShieldCheck },
-      { to: '/admin', label: 'Admin', icon: SlidersHorizontal, badge: pendingApprovals },
+      { to: '/admin', label: 'Admin', icon: SlidersHorizontal, badge: 'approvals' },
       { to: '/admin/routing', label: 'Routing & Release', icon: Route },
       { to: '/profile', label: 'Profile & Settings', icon: UserCircle },
     ],
@@ -49,6 +48,10 @@ const GROUPS = [
 ];
 
 export default function AppSidebar({ className, onNavigate }) {
+  const { subscriptions } = useSubscriptions();
+  const pendingApprovals = subscriptions.filter((subscription) => subscription.status === 'pending').length;
+  const badgeCount = (badge) => (badge === 'approvals' ? pendingApprovals : badge === 'unread' ? unreadCount() : 0);
+
   return (
     <aside
       className={cn(
@@ -65,7 +68,7 @@ export default function AppSidebar({ className, onNavigate }) {
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const count = item.badge ? item.badge() : 0;
+                const count = badgeCount(item.badge);
                 return (
                   <li key={item.to}>
                     <NavLink

@@ -18,15 +18,16 @@ import StatusChangeList from '@/components/anchor/StatusChangeList';
 import OpenActionList from '@/components/anchor/OpenActionList';
 import { useAuth } from '@/lib/AuthContext';
 import useAcknowledgements from '@/hooks/useAcknowledgements';
+import useMessageStates from '@/hooks/useMessageStates';
 import { useToast } from '@/components/ui/use-toast';
 import {
   CURRENT_USER,
+  SAMPLE_MESSAGES,
   formatZulu,
   isOverdue,
   latestTraffic,
   openActionItems,
   statusChanges,
-  unreadCount,
 } from '@/data/anchorSampleData';
 
 const greetingFor = (hour) => {
@@ -39,12 +40,26 @@ export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { pending, acknowledge } = useAcknowledgements(user);
+  const { byMessageId, states } = useMessageStates(user);
   const [busy, setBusy] = useState(false);
   const traffic = useMemo(() => latestTraffic(6), []);
   const changes = useMemo(() => statusChanges(), []);
   const actions = useMemo(() => openActionItems(), []);
   const overdue = pending.filter(isOverdue).length;
-  const unread = unreadCount();
+
+  // Identity comes from the signed-in user, with the sample identity as a stand-in.
+  const identity = {
+    full_name: user?.full_name || CURRENT_USER.full_name,
+    command: user?.unit ? `${user.unit} Staff` : CURRENT_USER.command,
+    duty: user?.duty || user?.role || CURRENT_USER.role,
+  };
+
+  // Read state is held per user, so the dashboard agrees with the inbox.
+  const unread = useMemo(
+    () =>
+      SAMPLE_MESSAGES.filter((message) => !byMessageId(message.id)?.read_at && message.read_state !== 'read').length,
+    [byMessageId, states],
+  );
 
   const [ackTarget, setAckTarget] = useState(null);
 
@@ -52,14 +67,20 @@ export default function Home() {
     setBusy(true);
     try {
       const row = await acknowledge(ackTarget);
-      const at = formatZulu(row.acknowledged_at);
       setAckTarget(null);
-      toast({
-        title: 'Acknowledgement recorded',
-        description: `${row.message_reference} · ${at} · ${
-          row.ack_status === 'late' ? 'recorded late' : 'recorded on time'
-        }.`,
-      });
+      toast(
+        row.queued
+          ? {
+              title: 'Acknowledgement queued',
+              description: `${row.message_reference} · held on this workstation while EMCON is on, and recorded on reconnect.`,
+            }
+          : {
+              title: 'Acknowledgement recorded',
+              description: `${row.message_reference} · ${formatZulu(row.acknowledged_at)} · ${
+                row.ack_status === 'late' ? 'recorded late' : 'recorded on time'
+              }.`,
+            },
+      );
     } finally {
       setBusy(false);
     }
@@ -71,14 +92,11 @@ export default function Home() {
         <div>
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mutedink">Watch Officer dashboard</p>
           <h1 className="mt-1 font-heading text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">
-            {greetingFor(moment.utc().hour())}, {CURRENT_USER.full_name}
+            {greetingFor(moment.utc().hour())}, {identity.full_name}
           </h1>
           <p className="mt-1 text-[13px] text-mutedink">
-            {CURRENT_USER.command} · {CURRENT_USER.role} · all times Zulu
+            {identity.command} · {identity.duty} · all times Zulu
           </p>
-        </div>
-        <div className="rounded-sm border border-gold/50 bg-gold/10 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-navy-800">
-          Sample traffic set · not from C2OIX
         </div>
       </header>
 
@@ -92,7 +110,7 @@ export default function Home() {
         <KpiCard
           label="Overdue"
           value={overdue}
-          note={overdue ? 'Escalated to the alert rule owner' : 'No escalations'}
+          note={overdue ? 'Past the acknowledgement window' : 'No escalations'}
           tone={overdue ? 'critical' : 'quiet'}
         />
         <KpiCard label="New & unread" value={unread} note="Across all communities" />
@@ -162,7 +180,7 @@ export default function Home() {
           <ul className="space-y-1.5 text-[12.5px] text-mutedink">
             <li>• Your acknowledgement is recorded against your account with the Zulu time it was given.</li>
             <li>• An acknowledgement cannot be withdrawn, corrected or delegated after it is recorded.</li>
-            <li>• Past the due time, the pending item escalates to the role named in the alert rule.</li>
+            <li>• Past the due time, the pending item is shown as overdue and escalates to {ackTarget?.escalate_to_role || 'the escalation role'} per the alert rule.</li>
           </ul>
 
           <DialogFooter className="gap-2">

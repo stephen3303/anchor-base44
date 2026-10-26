@@ -24,7 +24,8 @@ export default function MandatoryAckCard({ message, onAcknowledge }) {
       <h3 className="mt-2 text-[14.5px] font-semibold leading-snug text-ink">{message.subject}</h3>
       <p className="mt-1 text-[11.5px] text-mutedink">
         {message.originator} · acknowledgement due {formatZulu(message.ack_due)}
-        {overdue && ' · escalated per alert rule'}
+        {message.alert_rule ? ` · ${message.alert_rule}` : ''}
+        {overdue ? ` · overdue, escalating to ${message.escalate_to_role}` : ''}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">

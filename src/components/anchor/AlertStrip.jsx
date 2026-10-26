@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
  * Mandatory acknowledgement strip. One line, sticky, always actionable —
  * deliberately not a dismissable banner, because these items cannot be muted.
  */
-export default function AlertStrip({ pending, overdue }) {
+export default function AlertStrip({ pending, overdue, nextDue }) {
   if (!pending) return null;
 
   return (
@@ -16,9 +16,10 @@ export default function AlertStrip({ pending, overdue }) {
       </span>
       {overdue > 0 && (
         <span className="rounded-sm bg-lifecycle-cancelled px-1.5 py-[2px] font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
-          {overdue} overdue
+          {overdue} OVERDUE
         </span>
       )}
+      {nextDue && <span className="anchor-mono text-[11.5px] text-mutedink">next due {nextDue}</span>}
       <Link
         to="/"
         className="ml-auto shrink-0 font-semibold text-navy-600 underline decoration-navy-600/30 underline-offset-2 hover:decoration-navy-600"

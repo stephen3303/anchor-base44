@@ -15,7 +15,14 @@ import Drafting from '@/pages/Drafting';
 import DraftNew from '@/pages/DraftNew';
 import DraftWorkspace from '@/pages/DraftWorkspace';
 import AdminRouting from '@/pages/AdminRouting';
-import Planned from '@/pages/Planned';
+import Admin from '@/pages/Admin';
+import Audit from '@/pages/Audit';
+import Reports from '@/pages/Reports';
+import Subscriptions from '@/pages/Subscriptions';
+import Briefings from '@/pages/Briefings';
+import WatchTurnover from '@/pages/WatchTurnover';
+import Offline from '@/pages/Offline';
+import Profile from '@/pages/Profile';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
@@ -64,87 +71,15 @@ const AuthenticatedApp = () => {
           <Route path="/drafting/new" element={<DraftNew />} />
           <Route path="/drafting/:id" element={<DraftWorkspace />} />
           <Route path="/admin/routing" element={<AdminRouting />} />
-          <Route
-            path="/search"
-            element={
-              <Planned
-                title="Search"
-                note="Merged into the Messages surface per the review: advanced filters for date range, type, originator, precedence, community and status, keyword search over official text only, and saved searches."
-              />
-            }
-          />
-          <Route
-            path="/subscriptions"
-            element={
-              <Planned
-                title="Subscriptions"
-                note="My subscriptions with status and channels, category sidebar, recommended feeds, and a request form with justification. Requests stay Pending Approval until an admin decides, and mandatory feeds cannot be paused."
-              />
-            }
-          />
-          <Route
-            path="/briefings"
-            element={
-              <Planned
-                title="Briefings"
-                note="Generated briefing with executive summary, key takeaways, high-priority messages and action items. The tailored briefing builder is deferred beyond the pilot."
-              />
-            }
-          />
-          <Route
-            path="/watch-turnover"
-            element={
-              <Planned
-                title="Watch Turnover"
-                note="Situation overview, high-priority traffic since the last watch, open actions, ongoing topics, watch notes and checklist, and a generated turnover package — one turnover per watch, authored by the watch officer on duty."
-              />
-            }
-          />
-          <Route
-            path="/offline"
-            element={
-              <Planned
-                title="Offline Mode"
-                note="EMCON is a global mode controlled from the header. This screen manages what it covers: connection status, locally held traffic, the pending sync queue and sync priority with acknowledgements first."
-              />
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <Planned
-                title="Reports"
-                note="Acknowledgement accountability per message — acknowledged, pending, overdue and escalated, plus who has not acknowledged — and traffic volume by type and precedence."
-              />
-            }
-          />
-          <Route
-            path="/audit"
-            element={
-              <Planned
-                title="Audit and Integrity"
-                note="Filterable append-only audit log with the hash chain, integrity check results that report the first break, and charts by action and classification."
-              />
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <Planned
-                title="Admin"
-                note="Subscription approval queue with approve and deny comments, mandatory alert rules with precedence conditions, acknowledgement windows and escalation roles, and access groups."
-              />
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <Planned
-                title="Profile and Settings"
-                note="Rank, unit, role and groups, notification preferences per channel and precedence, display and density settings, and security information."
-              />
-            }
-          />
+          <Route path="/search" element={<Navigate to="/messages" replace />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/briefings" element={<Briefings />} />
+          <Route path="/watch-turnover" element={<WatchTurnover />} />
+          <Route path="/offline" element={<Offline />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/audit" element={<Audit />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>
 

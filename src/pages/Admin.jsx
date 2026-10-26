@@ -12,7 +12,9 @@ export default function Admin() {
   const { user } = useAuth();
   const loaded = useAlertRules();
   const [saved, setSaved] = useState(null);
-  const rules = saved ? [saved, ...loaded.filter((rule) => rule.id !== saved.id)] : loaded;
+  const rules = (saved ? [saved, ...loaded.filter((rule) => rule.id !== saved.id)] : loaded).sort(
+    (a, b) => (a.priority ?? 99) - (b.priority ?? 99),
+  );
 
   if (user?.role !== 'admin') {
     return (

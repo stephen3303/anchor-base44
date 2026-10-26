@@ -24,24 +24,34 @@ export default function useMessageStates(user) {
   const markRead = useCallback(async (message) => {
     const existing = states.find((s) => s.message_id === message.id);
     if (existing?.read_at) return existing;
-    if (existing) return base44.entities.MessageUserState.update(existing.id, { read_at: moment.utc().toISOString() });
-    return base44.entities.MessageUserState.create({
-      message_id: message.id,
-      message_reference: message.reference || '',
-      user_email: user?.email || '',
-      read_at: moment.utc().toISOString(),
-    });
+
+    const row = existing
+      ? await base44.entities.MessageUserState.update(existing.id, { read_at: moment.utc().toISOString() })
+      : await base44.entities.MessageUserState.create({
+          message_id: message.id,
+          message_reference: message.reference || '',
+          user_email: user?.email || '',
+          read_at: moment.utc().toISOString(),
+        });
+
+    setStates((prev) => [row, ...prev.filter((s) => s.id !== row.id)]);
+    return row;
   }, [states, user?.email]);
 
   const toggleStar = useCallback(async (message) => {
     const existing = states.find((s) => s.message_id === message.id);
-    if (existing) return base44.entities.MessageUserState.update(existing.id, { starred: !existing.starred });
-    return base44.entities.MessageUserState.create({
-      message_id: message.id,
-      message_reference: message.reference || '',
-      user_email: user?.email || '',
-      starred: true,
-    });
+
+    const row = existing
+      ? await base44.entities.MessageUserState.update(existing.id, { starred: !existing.starred })
+      : await base44.entities.MessageUserState.create({
+          message_id: message.id,
+          message_reference: message.reference || '',
+          user_email: user?.email || '',
+          starred: true,
+        });
+
+    setStates((prev) => [row, ...prev.filter((s) => s.id !== row.id)]);
+    return row;
   }, [states, user?.email]);
 
   const byMessageId = useCallback((id) => states.find((s) => s.message_id === id) || null, [states]);

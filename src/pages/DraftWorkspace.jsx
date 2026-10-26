@@ -19,6 +19,7 @@ import { loadCommandSettings, nextAssignment } from '@/lib/commandSettings';
 import { errorsOf, validateDraft } from '@/lib/ntpValidate';
 import { buildRoute, currentRouteStep, isEditable, releaseAuthorityFor, routeEmails, selectWorkflow } from '@/lib/drafting';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
+import useEmcon from '@/hooks/useEmcon';
 
 const sourceOf = (d) => SAMPLE_MESSAGES.find((m) => m.id === d.derived_from_message_id) || null;
 
@@ -35,6 +36,7 @@ const Panel = ({ title, hint, children }) => (
 export default function DraftWorkspace() {
   const { id } = useParams();
   const { toast } = useToast();
+  const [emcon] = useEmcon();
   const [draft, setDraft] = useState(null);
   const [workflows, setWorkflows] = useState([]);
   const [authorities, setAuthorities] = useState([]);
@@ -198,6 +200,13 @@ export default function DraftWorkspace() {
   };
 
   const release = async () => {
+    if (emcon) {
+      toast({
+        title: 'Release needs the network',
+        description: 'EMCON is on. Leave EMCON to transmit this message.',
+      });
+      return;
+    }
     const step = currentRouteStep(draft);
     const authority = releaseAuthorityFor(authorities, user?.email);
     if (!step || step.action !== 'release') {
@@ -442,6 +451,11 @@ export default function DraftWorkspace() {
               onRelease={release}
               onReturn={returnForCorrection}
               onWithdraw={withdraw}
+              blockedReason={
+                emcon
+                  ? 'EMCON is on. Actions that transmit — releasing a message, submitting it for routing — need the network and are disabled until you return to normal operations.'
+                  : null
+              }
             />
           </Panel>
 

@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Link2, Paperclip, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Link2, Paperclip, Printer, ShieldCheck } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
 import ClassificationStrip from '@/components/anchor/ClassificationStrip';
+import PrintWatermark from '@/components/anchor/PrintWatermark';
 import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
 import LifecycleBadge from '@/components/anchor/LifecycleBadge';
+import { useAuth } from '@/lib/AuthContext';
+import useAlertRules from '@/hooks/useAlertRules';
+import useSubscriptions from '@/hooks/useSubscriptions';
+import { recordAudit } from '@/lib/audit';
+import { deliveryReasons } from '@/lib/delivery';
 import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSampleData';
 import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
@@ -26,10 +33,24 @@ const Meta = ({ label, value }) => (
 /** Read-only official record. Reference lines resolve to the messages they cite. */
 export default function MessageRecord() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const rules = useAlertRules();
+  const { subscriptions } = useSubscriptions();
   const [superseding, setSuperseding] = useState([]);
   const [view, setView] = useState('record');
 
   const message = SAMPLE_MESSAGES.find((m) => m.id === id) || null;
+
+  const print = async () => {
+    await recordAudit({
+      action: 'record_printed',
+      target_type: 'message',
+      target_id: id,
+      target_reference: message?.reference || '',
+      detail: 'Record printed with the classification banner on every page and a per-copy watermark',
+    });
+    window.print();
+  };
 
   useEffect(() => {
     let alive = true;
@@ -70,6 +91,7 @@ export default function MessageRecord() {
 
   return (
     <div className="mx-auto w-full max-w-[1000px] space-y-4 anchor-fade-in">
+      <PrintWatermark label="Record copy" user={user} />
       <ClassificationStrip />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -77,7 +99,14 @@ export default function MessageRecord() {
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Back to Messages
         </Link>
-        <div className="ml-auto inline-flex overflow-hidden rounded-sm border border-line">
+        <div className="ml-auto flex items-center gap-2 anchor-no-print">
+          <Button size="sm" variant="outline" className="h-9 gap-1.5 border-line text-[12px]" onClick={print}>
+            <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+            Print record
+          </Button>
+        </div>
+
+        <div className="inline-flex overflow-hidden rounded-sm border border-line">
           {VIEWS.map((option) => (
             <button
               key={option.id}
@@ -153,6 +182,18 @@ export default function MessageRecord() {
 
         </div>
 
+        <div className="border-t border-line px-4 py-4 sm:px-6">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">Why you are seeing this</h2>
+          <ul className="mt-2 space-y-1.5">
+            {deliveryReasons(message, { rules, subscriptions }).map((reason) => (
+              <li key={`${reason.kind}-${reason.label}`} className="text-[12.5px] leading-snug text-ink">
+                <span className="font-semibold">{reason.label}</span>
+                <span className="text-mutedink"> — {reason.note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         <MessageOriginalText message={message} />
 
         {related.length > 0 && (
@@ -196,7 +237,7 @@ export default function MessageRecord() {
           </div>
         )}
 
-        <div className="border-t border-line bg-ai/5 px-4 py-4 sm:px-6">
+        <div className="anchor-ai-panel border-t border-line bg-ai/5 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">
             <span className="rounded-sm border border-ai/40 bg-ai/10 px-1.5 py-[2px] text-[9.5px] font-semibold uppercase tracking-[0.1em] text-ai">
               AI-generated summary — not authoritative
@@ -217,8 +258,8 @@ export default function MessageRecord() {
             <Meta label="SHA-256" value={message.sha256} />
           </dl>
           <p className="mt-3 text-[11px] leading-snug text-mutedink">
-            The print rendition with classification markings on every page and the metadata rail arrive with the record
-            view build step.
+            A printed copy carries the classification banner on every page and a per-copy watermark attributed to the
+            workstation that printed it. Printing is written to the audit chain.
           </p>
         </div>
       </article>
