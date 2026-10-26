@@ -79,28 +79,6 @@ export default function CommandSettingsPanel({ setting, disabled, busy, onSave }
             className="anchor-mono h-9 text-[13px]"
           />
         </Field>
-
-        <Field label="Local control sequence prefix" hint="Set to a hyphen to transmit the number bare.">
-          <Input
-            value={form.sequence_prefix}
-            onChange={(e) => set({ sequence_prefix: e.target.value })}
-            disabled={disabled}
-            maxLength={3}
-            className="anchor-mono h-9 text-[13px]"
-          />
-        </Field>
-
-        <Field label="Digits" hint="Zero-padded to this width, from 1 to 8.">
-          <Input
-            type="number"
-            min="1"
-            max="8"
-            value={form.sequence_digits}
-            onChange={(e) => set({ sequence_digits: e.target.value })}
-            disabled={disabled}
-            className="anchor-mono h-9 text-[13px]"
-          />
-        </Field>
       </div>
     </section>
   );

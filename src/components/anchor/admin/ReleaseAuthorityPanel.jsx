@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MESSAGE_TYPES } from '@/data/draftOptions';
 import { shortName } from '@/lib/personnel';
@@ -13,33 +12,36 @@ import SearchableSelect from './SearchableSelect';
  * subordinates, optionally limited to a set of message types.
  *
  * Designations are made from the personnel records, so the authority is held by a
- * person in a rank and a position — and the record's email is what the release is
- * checked against when they sign in.
+ * person in a rank and a position: the designation is the position their record
+ * holds, and the record's email is what the release is checked against when they
+ * sign in.
  */
 export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, onRemove, busy }) {
   const [email, setEmail] = useState('');
-  const [designation, setDesignation] = useState('');
   const [scope, setScope] = useState('all');
   const [isCo, setIsCo] = useState(false);
   const [error, setError] = useState('');
 
   const add = () => {
     const person = (personnel || []).find((p) => p.email && p.email === email);
-    if (!person || !designation.trim()) {
-      setError('Pick a person from the roster and give the designation they hold.');
+    if (!person) {
+      setError('Pick a person from the roster.');
+      return;
+    }
+    if (!person.position) {
+      setError(`${shortName(person)} holds no position on their roster record — set one before designating them.`);
       return;
     }
     setError('');
     onAdd({
       user_email: person.email,
       user_name: shortName(person),
-      designation: designation.trim(),
+      designation: person.position,
       is_commanding_officer: isCo,
       scope_message_types: scope === 'all' ? [] : [scope],
       active: true,
     });
     setEmail('');
-    setDesignation('');
     setScope('all');
     setIsCo(false);
   };
@@ -90,20 +92,9 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, o
               onChange={(person) => {
                 if (!person) return;
                 setEmail(person.email);
-                setDesignation(person.position || '');
                 setIsCo(/commanding officer/i.test(person.position || ''));
               }}
               placeholder="Select from the roster"
-              className="h-9 text-[13px]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">Designation</Label>
-            <Input
-              value={designation}
-              onChange={(e) => setDesignation(e.target.value)}
-              placeholder="Commanding Officer, XO, CDO"
               className="h-9 text-[13px]"
             />
           </div>
