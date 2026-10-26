@@ -15,22 +15,25 @@ export default function AdminRouting() {
   const [authorities, setAuthorities] = useState([]);
   const [setting, setSetting] = useState(null);
   const [personnel, setPersonnel] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [user, setUser] = useState(null);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    const [wf, auth, roster, me, command] = await Promise.all([
+    const [wf, auth, roster, me, command, tpl] = await Promise.all([
       base44.entities.RoutingWorkflow.list(),
       base44.entities.ReleaseAuthority.list(),
       base44.entities.Personnel.list({ sort: 'last_name', limit: 200 }),
       base44.auth.me(),
       loadCommandSettings(),
+      base44.entities.MessageTemplate.list(),
     ]);
     setWorkflows(wf || []);
     setAuthorities(auth || []);
     setPersonnel(roster?.items || []);
+    setTemplates([...new Set((tpl || []).map((t) => t.name).filter(Boolean))].sort());
     setUser(me);
     setSetting(command);
   };
@@ -161,6 +164,7 @@ export default function AdminRouting() {
       <ReleaseAuthorityPanel
         authorities={authorities}
         personnel={personnel}
+        templates={templates}
         onAdd={addAuthority}
         onRemove={removeAuthority}
         busy={busy}

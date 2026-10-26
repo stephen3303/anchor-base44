@@ -2,21 +2,24 @@ import { useState } from 'react';
 import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { MESSAGE_TYPES } from '@/data/draftOptions';
 import { shortName } from '@/lib/personnel';
 import PersonnelSelect from './PersonnelSelect';
 import SearchableSelect from './SearchableSelect';
 
 /**
- * Who may release. The commanding officer holds it inherently and may designate
- * subordinates, optionally limited to a set of message types.
+ * Who may release, and of what.
+ *
+ * Authority is scoped by message template, not by message type: the commanding
+ * officer holds it across the board, while a specialist is designated for the
+ * templates they own — the supply officer for routing supply messages, the
+ * navigator for arrival reports.
  *
  * Designations are made from the personnel records, so the authority is held by a
  * person in a rank and a position: the designation is the position their record
  * holds, and the record's email is what the release is checked against when they
  * sign in.
  */
-export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, onRemove, busy }) {
+export default function ReleaseAuthorityPanel({ authorities, personnel, templates, onAdd, onRemove, busy }) {
   const [email, setEmail] = useState('');
   const [scope, setScope] = useState('all');
   const [isCo, setIsCo] = useState(false);
@@ -38,7 +41,7 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, o
       user_name: shortName(person),
       designation: person.position,
       is_commanding_officer: isCo,
-      scope_message_types: scope === 'all' ? [] : [scope],
+      scope_message_templates: scope === 'all' ? [] : [scope],
       active: true,
     });
     setEmail('');
@@ -65,7 +68,10 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, o
                 {a.active === false ? ' · inactive' : ''}
               </p>
               <p className="text-[11.5px] text-mutedink">
-                {a.designation} · {(a.scope_message_types || []).length ? a.scope_message_types.join(', ') : 'all message types'}
+                {a.designation} ·{' '}
+                {(a.scope_message_templates || []).length
+                  ? a.scope_message_templates.join(', ')
+                  : 'all message templates'}
               </p>
             </div>
             <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(a)} disabled={busy} className="h-8 px-2" title="Remove designation">
@@ -100,16 +106,19 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, o
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">Authority scope</Label>
+            <Label className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">
+              Message templates they may release
+            </Label>
             <SearchableSelect
               options={[
-                { value: 'all', label: 'All message types' },
-                ...MESSAGE_TYPES.map((t) => ({ value: t, label: t })),
+                { value: 'all', label: 'All message templates' },
+                ...(templates || []).map((name) => ({ value: name, label: name })),
               ]}
               value={scope}
               onChange={setScope}
-              placeholder="All message types"
-              searchPlaceholder="Type a message type…"
+              placeholder="All message templates"
+              searchPlaceholder="Type a template name…"
+              emptyText="No message templates defined yet."
               className="h-9 text-[13px]"
             />
           </div>
