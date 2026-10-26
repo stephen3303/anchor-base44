@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import moment from 'moment';
 import { Anchor, ChevronDown, Menu, UserCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
@@ -14,13 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ClassificationStrip from './ClassificationStrip';
 import LinkStatus from './LinkStatus';
+import HeaderClocks from './HeaderClocks';
 import { useAuth } from '@/lib/AuthContext';
 import useConnectivity from '@/hooks/useConnectivity';
 import { CURRENT_USER } from '@/data/anchorSampleData';
 
 export default function AppHeader({ onOpenMenu }) {
   const { user } = useAuth();
-  const [zulu, setZulu] = useState(() => moment.utc());
   const { offline } = useConnectivity();
 
   // Identity comes from the signed-in user; the sample identity stands in for a
@@ -31,11 +29,6 @@ export default function AppHeader({ onOpenMenu }) {
     unit: user?.unit || CURRENT_USER.unit,
     duty: user?.duty || user?.role || CURRENT_USER.role,
   };
-
-  useEffect(() => {
-    const id = setInterval(() => setZulu(moment.utc()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   return (
     <>
@@ -73,14 +66,12 @@ export default function AppHeader({ onOpenMenu }) {
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
             <LinkStatus />
 
-            <div className="hidden items-center gap-3 border-l border-white/10 pl-4 md:flex">
+            <div className="hidden items-center gap-3 border-l border-white/10 pl-4 lg:flex">
               <div className="text-right">
                 <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-navy-100/80">
                   {identity.unit} Staff
                 </p>
-                <p className="anchor-mono text-[11px] text-navy-100/60">
-                  {zulu.format('DD MMM YY')} · {zulu.format('HH:mm:ss')}Z
-                </p>
+                <HeaderClocks />
               </div>
             </div>
 

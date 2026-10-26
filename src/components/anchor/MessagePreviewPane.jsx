@@ -18,6 +18,7 @@ import useAlertRules from '@/hooks/useAlertRules';
 import useSubscriptions from '@/hooks/useSubscriptions';
 import { deliveryReasons } from '@/lib/delivery';
 import { formatShort, formatZulu, messageByReference } from '@/data/anchorSampleData';
+import Dtg from './Dtg';
 
 function MetaRow({ label, children }) {
   return (
@@ -88,7 +89,7 @@ export default function MessagePreviewPane({ message, onClose }) {
         <dl className="border-b border-line pb-2">
           <MetaRow label="Originator">{message.originator}</MetaRow>
           <MetaRow label="DTG">
-            <span className="anchor-mono">{message.dtg}</span>
+            <Dtg value={message.dtg} className="text-[11.5px] text-ink" />
           </MetaRow>
           <MetaRow label="Received">{formatZulu(message.received)}</MetaRow>
           <MetaRow label="Communities">{message.communities.join(' · ')}</MetaRow>

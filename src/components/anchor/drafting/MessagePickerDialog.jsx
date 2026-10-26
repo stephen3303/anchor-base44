@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
+import Dtg from '@/components/anchor/Dtg';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 
 /** Picks an official message so the reference line links to it. */
@@ -44,7 +45,8 @@ export default function MessagePickerDialog({ open, onOpenChange, onPick }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <PrecedenceBadge precedence={m.precedence} />
                   <span className="anchor-mono text-[10.5px] text-mutedink">{m.reference}</span>
-                  <span className="anchor-mono text-[10.5px] text-mutedink">· {m.dtg}</span>
+                  <span className="text-[10.5px] text-mutedink">·</span>
+                  <Dtg value={m.dtg} className="text-[10.5px] text-mutedink" />
                 </div>
                 <p className="mt-1 text-[12.5px] font-medium leading-snug text-ink">{m.subject}</p>
                 <p className="text-[11px] text-mutedink">{m.originator}</p>

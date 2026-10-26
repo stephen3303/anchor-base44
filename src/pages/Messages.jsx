@@ -145,7 +145,8 @@ export default function Messages() {
         <div>
           <h1 className="font-heading text-[24px] font-semibold tracking-tight text-ink sm:text-[27px]">Messages</h1>
           <p className="mt-1 text-[13px] text-mutedink">
-            {filtered.length} of {rows.length} records shown · {unread} new or unread · all times Zulu
+            {filtered.length} of {rows.length} records shown · {unread} new or unread · DTGs in Zulu, hover one for
+            your local time
           </p>
         </div>
         <p className="text-[11px] text-mutedink">j / k to walk the list · Enter opens the record · Esc closes the preview</p>

@@ -17,6 +17,7 @@ import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
 import MessageOriginalText from '@/components/anchor/MessageOriginalText';
 import MessagePlainTextView from '@/components/anchor/MessagePlainTextView';
+import Dtg from '@/components/anchor/Dtg';
 
 const VIEWS = [
   { id: 'record', label: 'Record view' },
@@ -134,7 +135,8 @@ export default function MessageRecord() {
             <PrecedenceBadge precedence={message.precedence} />
             <LifecycleBadge lifecycle={message.lifecycle} />
             <span className="anchor-mono text-[11px] text-mutedink">{message.reference}</span>
-            <span className="anchor-mono text-[11px] text-mutedink">· {message.dtg}</span>
+            <span className="text-[11px] text-mutedink">·</span>
+            <Dtg value={message.dtg} className="text-[11px] text-mutedink" />
             <span className="anchor-mono text-[11px] text-mutedink">· {message.type}</span>
           </div>
           <h1 className="font-heading text-[21px] font-semibold leading-tight tracking-tight text-ink sm:text-[24px]">
@@ -172,7 +174,7 @@ export default function MessageRecord() {
 
         <div className="px-4 py-4 sm:px-6">
           <dl className="grid gap-3 sm:grid-cols-3">
-            <Meta label="DTG" value={message.dtg} />
+            <Meta label="DTG" value={<Dtg value={message.dtg} />} />
             <Meta label="Received" value={formatZulu(message.received)} />
             <Meta label="Originator (FM)" value={message.originator} />
             <Meta label="Action (TO)" value={message.to} />

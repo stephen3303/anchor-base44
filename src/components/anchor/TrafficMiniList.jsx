@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import PrecedenceBadge, { PRECEDENCE_RULE } from './PrecedenceBadge';
 import LifecycleBadge from './LifecycleBadge';
 import { formatShort } from '@/data/anchorSampleData';
+import Dtg from './Dtg';
 
 export default function TrafficMiniList({ messages }) {
   return (
@@ -17,7 +18,7 @@ export default function TrafficMiniList({ messages }) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <PrecedenceBadge precedence={m.precedence} />
-                <span className="anchor-mono text-[10.5px] text-mutedink">{m.dtg}</span>
+                <Dtg value={m.dtg} className="text-[10.5px] text-mutedink" />
                 {m.read_state !== 'read' && (
                   <span className="h-1.5 w-1.5 rounded-full bg-navy-600" title="Unread" />
                 )}

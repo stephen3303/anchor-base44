@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import SectionCard from '@/components/anchor/SectionCard';
 import IdentityForm from '@/components/anchor/profile/IdentityForm';
 import NotificationPreferences from '@/components/anchor/profile/NotificationPreferences';
+import TimeZonePanel from '@/components/anchor/profile/TimeZonePanel';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -28,6 +29,10 @@ export default function Profile() {
 
       <SectionCard title="Identity" hint="User fields — real PKI is not connected in the pilot">
         <IdentityForm user={user} onSaved={setIdentity} />
+      </SectionCard>
+
+      <SectionCard title="Time" hint="Zulu, and your own clock">
+        <TimeZonePanel user={user} />
       </SectionCard>
 
       <SectionCard title="Notification preferences" hint="Channels, digest and precedence">
