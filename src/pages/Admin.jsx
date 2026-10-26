@@ -5,6 +5,7 @@ import SectionCard from '@/components/anchor/SectionCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ApprovalQueue from '@/components/anchor/admin/ApprovalQueue';
 import AlertRuleTable from '@/components/anchor/admin/AlertRuleTable';
+import PersonnelPanel from '@/components/anchor/admin/PersonnelPanel';
 import { useAuth } from '@/lib/AuthContext';
 import useAlertRules from '@/hooks/useAlertRules';
 
@@ -46,12 +47,15 @@ export default function Admin() {
         <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mutedink">Govern</p>
         <h1 className="mt-1 font-heading text-[24px] font-semibold tracking-tight text-ink sm:text-[27px]">Admin</h1>
         <p className="mt-1 text-[13px] text-mutedink">
-          Subscription decisions, mandatory alert rules and the acknowledgement window each rule carries
+          Command roster, subscription decisions, mandatory alert rules and the acknowledgement window each rule carries
         </p>
       </header>
 
-      <Tabs defaultValue="approvals">
+      <Tabs defaultValue="personnel">
         <TabsList className="border border-line bg-white">
+          <TabsTrigger value="personnel" className="text-[12.5px]">
+            Personnel
+          </TabsTrigger>
           <TabsTrigger value="approvals" className="text-[12.5px]">
             Approvals
           </TabsTrigger>
@@ -59,6 +63,12 @@ export default function Admin() {
             Alert rules
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="personnel" className="mt-4">
+          <SectionCard title="Command roster" hint="Name, rank and position — administered by the command">
+            <PersonnelPanel />
+          </SectionCard>
+        </TabsContent>
 
         <TabsContent value="approvals" className="mt-4">
           <SectionCard title="Subscription approvals" hint="Approve or deny with a recorded comment">

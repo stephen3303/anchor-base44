@@ -20,6 +20,7 @@ const CATEGORY_BY_ACTION = {
   subscription_paused: 'act',
   subscription_decided: 'govern',
   alert_rule_changed: 'admin',
+  personnel_changed: 'admin',
   sync_replayed: 'system',
   turnover_saved: 'act',
   profile_updated: 'admin',
