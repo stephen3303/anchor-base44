@@ -3,11 +3,10 @@ import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { MESSAGE_TYPES } from '@/data/draftOptions';
 import { shortName } from '@/lib/personnel';
 import PersonnelSelect from './PersonnelSelect';
+import SearchableSelect from './SearchableSelect';
 
 /**
  * Who may release. The commanding officer holds it inherently and may designate
@@ -111,28 +110,17 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, onAdd, o
 
           <div className="space-y-1.5">
             <Label className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">Authority scope</Label>
-            <Select value={scope} onValueChange={setScope}>
-              <SelectTrigger className="h-9 text-[13px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-[13px]">
-                  All message types
-                </SelectItem>
-                {MESSAGE_TYPES.map((t) => (
-                  <SelectItem key={t} value={t} className="text-[13px]">
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end gap-2 pb-1">
-            <Switch id="co-flag" checked={isCo} onCheckedChange={setIsCo} />
-            <Label htmlFor="co-flag" className="text-[12.5px] text-ink">
-              This is the commanding officer
-            </Label>
+            <SearchableSelect
+              options={[
+                { value: 'all', label: 'All message types' },
+                ...MESSAGE_TYPES.map((t) => ({ value: t, label: t })),
+              ]}
+              value={scope}
+              onChange={setScope}
+              placeholder="All message types"
+              searchPlaceholder="Type a message type…"
+              className="h-9 text-[13px]"
+            />
           </div>
         </div>
 

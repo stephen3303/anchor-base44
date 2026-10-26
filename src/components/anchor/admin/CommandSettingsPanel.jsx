@@ -3,8 +3,8 @@ import { Radio, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TEXT_CASE, formatSequence, withDefaults } from '@/lib/commandSettings';
+import SearchableSelect from './SearchableSelect';
 
 const Field = ({ label, hint, children }) => (
   <div className="space-y-1.5">
@@ -52,18 +52,18 @@ export default function CommandSettingsPanel({ setting, disabled, busy, onSave }
 
       <div className="grid gap-4 p-4 sm:grid-cols-2">
         <Field label="Text case" hint="Applies to the subject, remarks, POC and declassification as transmitted.">
-          <Select value={form.text_case} onValueChange={(v) => set({ text_case: v })} disabled={disabled}>
-            <SelectTrigger className="h-9 text-[13px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TEXT_CASE.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="text-[13px]">
-                  {option.label} — {option.note}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={TEXT_CASE.map((option) => ({
+              value: option.value,
+              label: `${option.label} — ${option.note}`,
+              keywords: option.note,
+            }))}
+            value={form.text_case}
+            onChange={(v) => set({ text_case: v })}
+            disabled={disabled}
+            searchPlaceholder="Type to filter…"
+            className="h-9 text-[13px]"
+          />
         </Field>
 
         <Field

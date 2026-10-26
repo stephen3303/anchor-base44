@@ -3,13 +3,13 @@ import { ArrowRight, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import CommaListInput from '@/components/anchor/drafting/CommaListInput';
 import { MESSAGE_TYPES, STEP_ACTIONS } from '@/data/draftOptions';
 import { shortName } from '@/lib/personnel';
 import { cn } from '@/lib/utils';
 import PersonnelSelect from './PersonnelSelect';
+import SearchableSelect from './SearchableSelect';
 
 const emptyStep = (order) => ({ order, title: '', duty: '', assignee_email: '', assignee_name: '', action: 'review' });
 
@@ -137,18 +137,13 @@ export default function RoutingWorkflowEditor({ workflow, personnel, onSave, onC
                 placeholder="Step name (e.g. N3 review)"
                 className="h-8 text-[12.5px]"
               />
-              <Select value={step.action} onValueChange={(v) => setStep(index, { action: v })}>
-                <SelectTrigger className="h-8 text-[12.5px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STEP_ACTIONS.map((a) => (
-                    <SelectItem key={a.value} value={a.value} className="text-[12.5px]">
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={STEP_ACTIONS}
+                value={step.action}
+                onChange={(v) => setStep(index, { action: v })}
+                placeholder="Step action"
+                searchPlaceholder="Type an action…"
+              />
               <PersonnelSelect
                 personnel={personnel}
                 value={step.assignee_email}
