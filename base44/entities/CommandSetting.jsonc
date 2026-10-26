@@ -1,0 +1,63 @@
+{
+  "name": "CommandSetting",
+  "type": "object",
+  "properties": {
+    "text_case": {
+      "type": "string",
+      "enum": [
+        "upper",
+        "mixed"
+      ],
+      "default": "upper"
+    },
+    "sequence_prefix": {
+      "type": "string",
+      "default": "#"
+    },
+    "sequence_digits": {
+      "type": "number",
+      "default": 4
+    },
+    "next_sequence": {
+      "type": "number",
+      "default": 1
+    },
+    "updated_by_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "text_case"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

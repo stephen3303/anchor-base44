@@ -1,4 +1,5 @@
 import moment from 'moment';
+import { nullSequence, withDefaults } from '@/lib/commandSettings';
 
 /**
  * Message formatting per NTP 3(J), Telecommunications Users Manual.
@@ -6,10 +7,18 @@ import moment from 'moment';
  * Output follows the USMTF GENADMIN sequence (Annex A, Figure A-2):
  *   DTG line, FM / TO / INFO, BT, classification + SSIC, [general message title],
  *   MSGID, SUBJ, REF, AMPN or NARR, POC, RMKS, DECL, BT, #serial, NNNN.
- * All text is capitals, every line is at most 69 characters, every set ends with
- * "//", and addressee lines respect the 55 character PLA limit with office-code
- * continuation lines indented five spaces. The rendered text is frozen at release.
+ * Every line is at most 69 characters, every set ends with "//", and addressee
+ * lines respect the 55 character PLA limit with office-code continuation lines
+ * indented five spaces.
+ *
+ * Prose follows the command's configured text case (capitals by default); the DTG,
+ * the MSGID serial and the local control sequence are assigned at release, so an
+ * unreleased draft renders the "-" null placeholder in their place. The rendered
+ * text is frozen at release.
  */
+
+/** The null placeholder for a field the command has not assigned (¶504, Annex A). */
+const NULL_FIELD = '-';
 
 export const PRECEDENCE_PROSIGN = { FLASH: 'Z', IMMEDIATE: 'O', PRIORITY: 'P', ROUTINE: 'R' };
 /** Classified markings are spelled with a space after each character (¶702a). */
@@ -101,16 +110,16 @@ const addressBlock = (prosign, list) =>
   });
 
 /** SUBJ set; a long subject continues on a second line that starts with a field marker. */
-export const subjectLines = (subject) => {
-  const s = up(subject).trim() || '[SUBJECT]';
+export const subjectLines = (subject, transform = up) => {
+  const s = transform(subject).trim() || '[SUBJECT]';
   if (s.length <= SUBJECT_FIRST_LIMIT) return [`SUBJ/${s}//`];
   let cut = s.lastIndexOf(' ', SUBJECT_FIRST_LIMIT);
   if (cut <= 0) cut = SUBJECT_FIRST_LIMIT;
   return [`SUBJ/${s.slice(0, cut).trim()}`, `/${s.slice(cut).trim()}//`];
 };
 
-const cleanAmplification = (ref) =>
-  up(ref.amplifying)
+const cleanAmplification = (ref, transform = up) =>
+  transform(ref.amplifying)
     .replace(/^\s*REF\s+[A-Z]\s+IS\s+/, '')
     .replace(/[.\s]+$/, '')
     .trim();
@@ -122,10 +131,13 @@ export const numberedParagraphs = (paragraphs) =>
     .map((p, i) => `${i + 1}. ${wrapLines(up(p))}`)
     .join('\n\n');
 
-export const renderMessage = (draft) => {
-  const dtg = draft.dtg || dtgNow();
+export const renderMessage = (draft, setting) => {
+  const settings = withDefaults(setting);
+  /** Prose follows the command text case; addresses, SSIC and codes stay capitals. */
+  const t = (value) => (settings.text_case === 'mixed' ? String(value ?? '') : up(value));
+  const dtg = draft.dtg || NULL_FIELD;
   const prosign = PRECEDENCE_PROSIGN[draft.precedence] || 'R';
-  const month = (dtg.match(/Z\s*([A-Z]{3})/) || [])[1] || '-';
+  const month = (String(draft.dtg || '').match(/Z\s*([A-Z]{3})/) || [])[1] || NULL_FIELD;
   const originator = splitOfficeCodes(draft.originator).pla || '[ORIGINATOR]';
   const refs = draft.references || [];
   const lines = [];
@@ -139,8 +151,8 @@ export const renderMessage = (draft) => {
 
   lines.push(`${CLASSIFICATION_SHORT[draft.classification] || 'UNCLAS'} //${up(draft.ssic) || '[SSIC]'}//`);
   if (draft.general_message_id) lines.push('', up(draft.general_message_id));
-  lines.push('', `MSGID/GENADMIN/${originator}/-/${month}//`);
-  lines.push('', ...subjectLines(draft.subject));
+  lines.push('', `MSGID/GENADMIN/${originator}/${draft.msn || NULL_FIELD}/${month}//`);
+  lines.push('', ...subjectLines(draft.subject, t));
 
   if (refs.length) lines.push('');
   refs.forEach((r, i) => {
@@ -149,9 +161,9 @@ export const renderMessage = (draft) => {
 
   const explained = refs.map((r, i) => ({ r, i })).filter(({ r }) => cleanAmplification(r));
   if (refs.length === 1 && explained.length) {
-    lines.push('', wrapLines(`AMPN/REF A IS ${cleanAmplification(refs[0])}.//`));
+    lines.push('', wrapLines(`AMPN/REF A IS ${cleanAmplification(refs[0], t)}.//`));
   } else if (refs.length > 1 && explained.length) {
-    const narr = explained.map(({ r, i }) => `REF ${refLabel(i)} IS ${cleanAmplification(r)}.`).join(' ');
+    const narr = explained.map(({ r, i }) => `REF ${refLabel(i)} IS ${cleanAmplification(r, t)}.`).join(' ');
     lines.push('', wrapLines(`NARR/${narr}//`));
   }
 
@@ -159,25 +171,25 @@ export const renderMessage = (draft) => {
   lines.push(
     '',
     wrapLines(
-      `POC/${up(draft.poc_name).trim() || '[NAME]'}/${up(draft.poc_rank).trim() || '[RANK]'}/${
-        up(draft.poc_location).trim() || '-'
+      `POC/${t(draft.poc_name).trim() || '[NAME]'}/${t(draft.poc_rank).trim() || '[RANK]'}/${
+        t(draft.poc_location).trim() || NULL_FIELD
       }/-/TEL: ${phone || '[PHONE]'}//`,
     ),
   );
 
-  const paras = (draft.paragraphs || []).map((p) => up(String(p || '').trim())).filter(Boolean);
+  const paras = (draft.paragraphs || []).map((p) => t(String(p || '').trim())).filter(Boolean);
   if (draft.released_by_name) {
-    const role = draft.release_authority_designation ? `, ${up(draft.release_authority_designation)}` : '';
-    paras.push(`RELEASED BY ${up(draft.released_by_name)}${role}.`);
+    const role = draft.release_authority_designation ? `, ${t(draft.release_authority_designation)}` : '';
+    paras.push(`RELEASED BY ${t(draft.released_by_name)}${role}.`);
   }
   const body = paras.length ? paras.map((p, i) => `${i + 1}. ${p}`).join('\n\n') : '1. [REMARKS]';
   lines.push('', wrapLines(`RMKS/${body}//`));
 
   if (draft.classification && draft.classification !== 'UNCLASSIFIED') {
-    lines.push('', `DECL/${up(draft.decl) || '[DECL]'}//`);
+    lines.push('', `DECL/${t(draft.decl) || '[DECL]'}//`);
   }
 
-  lines.push('', 'BT', '#0001', 'NNNN');
+  lines.push('', 'BT', draft.local_sequence || nullSequence(settings), 'NNNN');
   return lines.join('\n');
 };
 

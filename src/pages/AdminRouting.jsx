@@ -4,13 +4,16 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import ReleaseAuthorityPanel from '@/components/anchor/admin/ReleaseAuthorityPanel';
+import CommandSettingsPanel from '@/components/anchor/admin/CommandSettingsPanel';
 import RoutingWorkflowList from '@/components/anchor/admin/RoutingWorkflowList';
+import { loadCommandSettings } from '@/lib/commandSettings';
 import RoutingWorkflowEditor from '@/components/anchor/admin/RoutingWorkflowEditor';
 
 export default function AdminRouting() {
   const { toast } = useToast();
   const [workflows, setWorkflows] = useState([]);
   const [authorities, setAuthorities] = useState([]);
+  const [setting, setSetting] = useState(null);
   const [users, setUsers] = useState([]);
   const [user, setUser] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -18,16 +21,18 @@ export default function AdminRouting() {
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    const [wf, auth, people, me] = await Promise.all([
+    const [wf, auth, people, me, command] = await Promise.all([
       base44.entities.RoutingWorkflow.list(),
       base44.entities.ReleaseAuthority.list(),
       base44.entities.User.list(),
       base44.auth.me(),
+      loadCommandSettings(),
     ]);
     setWorkflows(wf || []);
     setAuthorities(auth || []);
     setUsers(people || []);
     setUser(me);
+    setSetting(command);
   };
 
   useEffect(() => {
@@ -91,6 +96,25 @@ export default function AdminRouting() {
     }
   };
 
+  const saveCommandSetting = async (form) => {
+    setBusy(true);
+    try {
+      const payload = {
+        text_case: form.text_case,
+        sequence_prefix: String(form.sequence_prefix ?? '#'),
+        sequence_digits: Math.min(8, Math.max(1, Math.trunc(Number(form.sequence_digits) || 4))),
+        next_sequence: Math.max(1, Math.trunc(Number(form.next_sequence) || 1)),
+        updated_by_name: user?.full_name || '',
+      };
+      if (setting?.id) await base44.entities.CommandSetting.update(setting.id, payload);
+      else await base44.entities.CommandSetting.create(payload);
+      await load();
+      toast({ title: 'Command settings saved', description: 'The next release follows them.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const removeAuthority = async (record) => {
     setBusy(true);
     try {
@@ -117,8 +141,9 @@ export default function AdminRouting() {
           Routing &amp; Release
         </h1>
         <p className="mt-1 text-[13px] leading-relaxed text-mutedink">
-          Define the chains a message follows by type and originator, and designate who holds release authority. Every
-          advance, kick-back and release against these chains is written to an append-only route log.
+          Define the chains a message follows by type and originator, designate who holds release authority, and set the
+          transmission settings every released message obeys. Every advance, kick-back and release against these chains
+          is written to an append-only route log.
         </p>
       </header>
 
@@ -138,6 +163,13 @@ export default function AdminRouting() {
         onAdd={addAuthority}
         onRemove={removeAuthority}
         busy={busy}
+      />
+
+      <CommandSettingsPanel
+        setting={setting}
+        disabled={user?.role !== 'admin'}
+        busy={busy}
+        onSave={saveCommandSetting}
       />
 
       <section className="rounded-md border border-line bg-white shadow-sm">

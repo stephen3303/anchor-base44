@@ -15,6 +15,7 @@ import DerivationNotice from '@/components/anchor/drafting/DerivationNotice';
 import DraftNtpFields from '@/components/anchor/drafting/DraftNtpFields';
 import NtpCheckPanel from '@/components/anchor/drafting/NtpCheckPanel';
 import { buildBodyText, dtgNow, renderMessage } from '@/lib/ntp';
+import { loadCommandSettings, nextAssignment } from '@/lib/commandSettings';
 import { errorsOf, validateDraft } from '@/lib/ntpValidate';
 import { buildRoute, currentRouteStep, isEditable, releaseAuthorityFor, routeEmails, selectWorkflow } from '@/lib/drafting';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
@@ -37,6 +38,7 @@ export default function DraftWorkspace() {
   const [draft, setDraft] = useState(null);
   const [workflows, setWorkflows] = useState([]);
   const [authorities, setAuthorities] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
@@ -46,17 +48,19 @@ export default function DraftWorkspace() {
     let alive = true;
     (async () => {
       try {
-        const [record, wf, auth, me] = await Promise.all([
+        const [record, wf, auth, me, command] = await Promise.all([
           base44.entities.DraftMessage.get(id),
           base44.entities.RoutingWorkflow.list(),
           base44.entities.ReleaseAuthority.list(),
           base44.auth.me(),
+          loadCommandSettings(),
         ]);
         if (!alive) return;
         setDraft(record);
         setWorkflows(wf || []);
         setAuthorities(auth || []);
         setUser(me);
+        setSettings(command);
       } catch (error) {
         if (alive) setMissing(true);
       } finally {
@@ -123,10 +127,8 @@ export default function DraftWorkspace() {
     try {
       const route = buildRoute(workflow);
       const routedTo = [...new Set([...routeEmails(route), draft.created_by].filter(Boolean))];
-      const dtg = dtgNow();
       const fields = {
-        dtg,
-        rendered_text: renderMessage({ ...draft, dtg }),
+        rendered_text: renderMessage(draft, settings),
         draft_status: 'in_routing',
         routing_workflow_id: workflow.id,
         routing_workflow_name: workflow.name,
@@ -216,14 +218,34 @@ export default function DraftWorkspace() {
       const steps = draft.routing_steps.map((s) =>
         s.order === step.order ? { ...s, status: 'released', acted_at: now } : s,
       );
-      const rendered = renderMessage({
-        ...draft,
-        released_by_name: user.full_name || user.email,
-        release_authority_designation: authority.designation,
-      });
+      // The DTG, the MSGID serial and the local message control sequence are assigned
+      // here, in release order, and never on a draft.
+      const assignment = nextAssignment(settings);
+      const dtg = dtgNow(now);
+      const rendered = renderMessage(
+        {
+          ...draft,
+          dtg,
+          msn: assignment.msn,
+          local_sequence: assignment.local_sequence,
+          released_by_name: user.full_name || user.email,
+          release_authority_designation: authority.designation,
+        },
+        settings,
+      );
+      if (settings?.id) {
+        await base44.entities.CommandSetting.update(settings.id, {
+          next_sequence: assignment.next_sequence,
+          updated_by_name: user.full_name || user.email,
+        });
+        setSettings((prev) => ({ ...prev, next_sequence: assignment.next_sequence }));
+      }
       await persist({
         routing_steps: steps,
         draft_status: 'released',
+        dtg,
+        msn: assignment.msn,
+        local_sequence: assignment.local_sequence,
         rendered_text: rendered,
         released_at: now,
         released_by_email: user.email,
@@ -239,10 +261,13 @@ export default function DraftWorkspace() {
         to_status: 'released',
         step_order: step.order,
         step_title: step.title,
-        comment: `Released as ${authority.designation}. The transmitted text is frozen.`,
+        comment: `Released as ${authority.designation} · ${assignment.local_sequence} · ${dtg}. The transmitted text is frozen.`,
         visible_to_all: true,
       });
-      toast({ title: 'Released', description: 'The record is frozen and the transmitted text is fixed.' });
+      toast({
+        title: `Released as ${assignment.local_sequence}`,
+        description: `DTG ${dtg}, MSN ${assignment.msn}. The record is frozen and the transmitted text is fixed.`,
+      });
     } finally {
       setBusy(false);
     }
@@ -394,7 +419,7 @@ export default function DraftWorkspace() {
             />
           </Panel>
 
-          <DraftPreview draft={draft} />
+          <DraftPreview draft={draft} settings={settings} />
         </div>
 
         <div className="space-y-4">

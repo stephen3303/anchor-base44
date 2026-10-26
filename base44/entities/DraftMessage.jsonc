@@ -68,6 +68,12 @@
     "dtg": {
       "type": "string"
     },
+    "msn": {
+      "type": "string"
+    },
+    "local_sequence": {
+      "type": "string"
+    },
     "originator": {
       "type": "string"
     },
