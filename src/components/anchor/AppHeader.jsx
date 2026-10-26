@@ -13,15 +13,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ClassificationStrip from './ClassificationStrip';
-import EmconToggle from './EmconToggle';
+import LinkStatus from './LinkStatus';
 import { useAuth } from '@/lib/AuthContext';
-import useEmcon from '@/hooks/useEmcon';
+import useConnectivity from '@/hooks/useConnectivity';
 import { CURRENT_USER } from '@/data/anchorSampleData';
 
 export default function AppHeader({ onOpenMenu }) {
   const { user } = useAuth();
   const [zulu, setZulu] = useState(() => moment.utc());
-  const [emcon] = useEmcon();
+  const { offline } = useConnectivity();
 
   // Identity comes from the signed-in user; the sample identity stands in for a
   // user who has not filled in their rank, unit or duty yet.
@@ -43,7 +43,7 @@ export default function AppHeader({ onOpenMenu }) {
       <header
         className={cn(
           'sticky top-[22px] z-50 h-[72px] border-b transition-colors duration-300',
-          emcon
+          offline
             ? 'border-gold/45 bg-gradient-to-r from-[#3B2A05] to-[#5D4407]'
             : 'border-navy-600/40 bg-gradient-to-r from-navy-950 to-navy-800',
         )}
@@ -71,7 +71,7 @@ export default function AppHeader({ onOpenMenu }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
-            <EmconToggle />
+            <LinkStatus />
 
             <div className="hidden items-center gap-3 border-l border-white/10 pl-4 md:flex">
               <div className="text-right">

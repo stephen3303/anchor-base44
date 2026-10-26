@@ -1,0 +1,82 @@
+{
+  "name": "LinkState",
+  "type": "object",
+  "properties": {
+    "local_label": {
+      "type": "string",
+      "default": "Command Server"
+    },
+    "external_label": {
+      "type": "string",
+      "default": "C2OIX circuit"
+    },
+    "external_up": {
+      "type": "boolean",
+      "default": true
+    },
+    "reported_by_name": {
+      "type": "string"
+    },
+    "reported_by_email": {
+      "type": "string"
+    },
+    "reported_at": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "external_up"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

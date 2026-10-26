@@ -4,7 +4,7 @@ import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 import { acknowledgementPayload } from '@/lib/acknowledgements';
 import { resolveMandatory } from '@/lib/alertRules';
 import { enqueue } from '@/lib/syncQueue';
-import { readEmcon } from '@/lib/emcon';
+import { isOffline } from '@/lib/connectivity';
 import { recordAudit } from '@/lib/audit';
 import useAlertRules from '@/hooks/useAlertRules';
 
@@ -12,8 +12,8 @@ import useAlertRules from '@/hooks/useAlertRules';
  * Mandatory acknowledgements owed by the signed-in user, live.
  *
  * The obligation is computed from the alert rules; what is stored is the
- * acknowledgement itself. In EMCON the acknowledgement is queued on the
- * workstation instead of being recorded, and replays when the network returns.
+ * acknowledgement itself. While the command is offline the acknowledgement is
+ * queued instead of being recorded, and replays when the circuit is restored.
  */
 export default function useAcknowledgements(user) {
   const rules = useAlertRules();
@@ -54,7 +54,7 @@ export default function useAcknowledgements(user) {
     async (message) => {
       const payload = acknowledgementPayload({ message, user });
 
-      if (readEmcon()) {
+      if (isOffline()) {
         const queued = enqueue({
           operation: 'acknowledgement',
           label: `${message.reference} acknowledgement`,

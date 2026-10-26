@@ -20,6 +20,7 @@ export const AUDIT_ACTION_LABEL = {
   subscription_decided: 'Subscription decided',
   alert_rule_changed: 'Alert rule changed',
   personnel_changed: 'Personnel record changed',
+  link_reported: 'Link state reported',
   sync_replayed: 'Queued action synchronised',
   turnover_saved: 'Watch turnover saved',
   profile_updated: 'Profile updated',

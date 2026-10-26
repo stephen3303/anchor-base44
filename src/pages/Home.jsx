@@ -72,7 +72,7 @@ export default function Home() {
         row.queued
           ? {
               title: 'Acknowledgement queued',
-              description: `${row.message_reference} · held on this workstation while EMCON is on, and recorded on reconnect.`,
+              description: `${row.message_reference} · held on this workstation while the command is offline, and recorded when the circuit is restored.`,
             }
           : {
               title: 'Acknowledgement recorded',

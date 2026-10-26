@@ -14,12 +14,14 @@ import RouteActionPanel from '@/components/anchor/drafting/RouteActionPanel';
 import DerivationNotice from '@/components/anchor/drafting/DerivationNotice';
 import DraftNtpFields from '@/components/anchor/drafting/DraftNtpFields';
 import NtpCheckPanel from '@/components/anchor/drafting/NtpCheckPanel';
-import { buildBodyText, dtgNow, renderMessage } from '@/lib/ntp';
-import { loadCommandSettings, nextAssignment } from '@/lib/commandSettings';
+import { buildBodyText, renderMessage } from '@/lib/ntp';
+import { loadCommandSettings } from '@/lib/commandSettings';
 import { errorsOf, validateDraft } from '@/lib/ntpValidate';
 import { buildRoute, currentRouteStep, isEditable, releaseAuthorityFor, routeEmails, selectWorkflow } from '@/lib/drafting';
-import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
-import useEmcon from '@/hooks/useEmcon';
+import { releaseDraft } from '@/lib/releaseDraft';
+import { enqueue, readQueue } from '@/lib/syncQueue';
+import { SAMPLE_MESSAGES, formatZulu } from '@/data/anchorSampleData';
+import useConnectivity from '@/hooks/useConnectivity';
 
 const sourceOf = (d) => SAMPLE_MESSAGES.find((m) => m.id === d.derived_from_message_id) || null;
 
@@ -36,7 +38,7 @@ const Panel = ({ title, hint, children }) => (
 export default function DraftWorkspace() {
   const { id } = useParams();
   const { toast } = useToast();
-  const [emcon] = useEmcon();
+  const { offline } = useConnectivity();
   const [draft, setDraft] = useState(null);
   const [workflows, setWorkflows] = useState([]);
   const [authorities, setAuthorities] = useState([]);
@@ -200,13 +202,6 @@ export default function DraftWorkspace() {
   };
 
   const release = async () => {
-    if (emcon) {
-      toast({
-        title: 'Release needs the network',
-        description: 'EMCON is on. Leave EMCON to transmit this message.',
-      });
-      return;
-    }
     const step = currentRouteStep(draft);
     const authority = releaseAuthorityFor(authorities, user?.email);
     if (!step || step.action !== 'release') {
@@ -221,61 +216,45 @@ export default function DraftWorkspace() {
       return;
     }
     if (blockOnErrors()) return;
-    setBusy(true);
-    try {
-      const now = new Date().toISOString();
-      const steps = draft.routing_steps.map((s) =>
-        s.order === step.order ? { ...s, status: 'released', acted_at: now } : s,
-      );
-      // The DTG, the MSGID serial and the local message control sequence are assigned
-      // here, in release order, and never on a draft.
-      const assignment = nextAssignment(settings);
-      const dtg = dtgNow(now);
-      const rendered = renderMessage(
-        {
-          ...draft,
-          dtg,
-          msn: assignment.msn,
-          local_sequence: assignment.local_sequence,
-          released_by_name: user.full_name || user.email,
-          release_authority_designation: authority.designation,
-        },
-        settings,
-      );
-      if (settings?.id) {
-        await base44.entities.CommandSetting.update(settings.id, {
-          next_sequence: assignment.next_sequence,
-          updated_by_name: user.full_name || user.email,
+
+    // Offline mode does not stop the release. The work continues and the transmission
+    // is held for the circuit; the DTG and serial are assigned when it actually goes.
+    if (offline) {
+      if (readQueue().some((item) => item.operation === 'transmission' && item.draft_id === id)) {
+        toast({
+          title: 'Already held for transmission',
+          description: 'This message is in the transmission queue and leaves when the circuit is restored.',
         });
-        setSettings((prev) => ({ ...prev, next_sequence: assignment.next_sequence }));
+        return;
       }
-      await persist({
-        routing_steps: steps,
-        draft_status: 'released',
-        dtg,
-        msn: assignment.msn,
-        local_sequence: assignment.local_sequence,
-        rendered_text: rendered,
-        released_at: now,
-        released_by_email: user.email,
-        released_by_name: user.full_name || user.email,
-        release_authority_designation: authority.designation,
-        assigned_to_email: '',
-        assigned_to_name: '',
-        assigned_duty: '',
-      });
-      await logEvent({
-        event_type: 'released',
-        from_status: 'in_routing',
-        to_status: 'released',
-        step_order: step.order,
-        step_title: step.title,
-        comment: `Released as ${authority.designation} · ${assignment.local_sequence} · ${dtg}. The transmitted text is frozen.`,
-        visible_to_all: true,
+      const queued = enqueue({
+        operation: 'transmission',
+        draft_id: id,
+        label: `${draft.message_type || 'DRAFT'} ${draft.subject || 'Untitled'}`,
+        target_reference: draft.message_type || 'DRAFT',
+        payload: {
+          authority_designation: authority.designation,
+          actor_email: user.email,
+          actor_name: user.full_name || user.email,
+        },
       });
       toast({
-        title: `Released as ${assignment.local_sequence}`,
-        description: `DTG ${dtg}, MSN ${assignment.msn}. The record is frozen and the transmitted text is fixed.`,
+        title: 'Release held for transmission',
+        description: `${authority.designation} · held at ${formatZulu(queued.queued_at)}. It leaves the command when the circuit is restored.`,
+      });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await releaseDraft({ draft, authority, actor: user, settings });
+      setDraft(result.draft);
+      if (settings?.id) {
+        setSettings((prev) => ({ ...prev, next_sequence: result.assignment.next_sequence }));
+      }
+      toast({
+        title: `Released as ${result.assignment.local_sequence}`,
+        description: `DTG ${result.dtg}, MSN ${result.assignment.msn}. The record is frozen and the transmitted text is fixed.`,
       });
     } finally {
       setBusy(false);
@@ -451,9 +430,9 @@ export default function DraftWorkspace() {
               onRelease={release}
               onReturn={returnForCorrection}
               onWithdraw={withdraw}
-              blockedReason={
-                emcon
-                  ? 'EMCON is on. Actions that transmit — releasing a message, submitting it for routing — need the network and are disabled until you return to normal operations.'
+              linkNotice={
+                offline
+                  ? 'Offline mode: the C2OIX circuit is down. Work continues — drafts can be written, routed and released — and a release is held for transmission until the circuit is restored.'
                   : null
               }
             />

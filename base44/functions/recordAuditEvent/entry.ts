@@ -21,6 +21,7 @@ const CATEGORY_BY_ACTION = {
   subscription_decided: 'govern',
   alert_rule_changed: 'admin',
   personnel_changed: 'admin',
+  link_reported: 'act',
   sync_replayed: 'system',
   turnover_saved: 'act',
   profile_updated: 'admin',

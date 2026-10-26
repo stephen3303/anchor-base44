@@ -20,7 +20,7 @@ export default function RouteActionPanel({
   onRelease,
   onReturn,
   onWithdraw,
-  blockedReason,
+  linkNotice,
 }) {
   const [returnOpen, setReturnOpen] = useState(false);
 
@@ -33,9 +33,9 @@ export default function RouteActionPanel({
 
   return (
     <div className="space-y-3">
-      {blockedReason && (
+      {linkNotice && (
         <p className="rounded-sm border border-gold/50 bg-[#FFF6DE] px-3 py-2 text-[11.5px] leading-snug text-ink">
-          {blockedReason}
+          {linkNotice}
         </p>
       )}
 
@@ -91,17 +91,12 @@ export default function RouteActionPanel({
                 type="button"
                 size="sm"
                 onClick={onRelease}
-                disabled={busy || !authority || Boolean(blockedReason)}
+                disabled={busy || !authority}
                 className="w-full gap-1.5 text-[12.5px]"
               >
                 <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 Release message
               </Button>
-              {blockedReason && (
-                <p className="text-[11.5px] leading-snug text-mutedink">
-                  Release transmits the message, so it needs the network. Leave EMCON to release.
-                </p>
-              )}
               {!authority && (
                 <p className="text-[11.5px] leading-snug text-mutedink">
                   Only the commanding officer or a designated release authority may release. Release authority is

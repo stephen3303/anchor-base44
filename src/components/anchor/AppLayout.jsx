@@ -10,10 +10,10 @@ import IngestStatusBanner from './IngestStatusBanner';
 import { formatShort, isOverdue } from '@/data/anchorSampleData';
 import { useAuth } from '@/lib/AuthContext';
 import useAcknowledgements from '@/hooks/useAcknowledgements';
-import useEmcon from '@/hooks/useEmcon';
+import useConnectivity from '@/hooks/useConnectivity';
 
 export default function AppLayout() {
-  const [emcon, setEmcon] = useEmcon();
+  const { offline, local, external } = useConnectivity();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
 
@@ -29,11 +29,12 @@ export default function AppLayout() {
         <AppSidebar className="sticky top-[94px] hidden h-[calc(100vh-94px)] border-r border-navy-800/70 lg:flex" />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {emcon && (
+          {offline && (
             <div className="border-b border-gold/45 bg-gold/20 px-4 py-2 text-[12.5px] text-ink anchor-no-print">
-              <span className="font-semibold uppercase tracking-[0.1em]">EMCON / Offline.</span> Network-only actions
-              are disabled with a reason. Traffic already received stays readable, and acknowledgements are queued on this
-              workstation until they can be recorded.
+              <span className="font-semibold uppercase tracking-[0.1em]">Offline mode.</span>{' '}
+              {local === 'down'
+                ? 'This workstation cannot reach the command server, so nothing can be read or written yet.'
+                : 'The C2OIX circuit is down. The command server is up, so work continues: traffic stays readable and drafts can be written, routed and released. Transmission — releases and acknowledgements — is held and goes out when the circuit is restored.'}
             </div>
           )}
 
@@ -44,7 +45,7 @@ export default function AppLayout() {
             <Outlet />
           </main>
 
-          <AppFooter emcon={emcon} />
+          <AppFooter local={local} external={external} />
         </div>
       </div>
 

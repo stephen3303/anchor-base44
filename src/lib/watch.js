@@ -22,5 +22,5 @@ export const DEFAULT_CHECKLIST = [
   { label: 'Relief briefed on outstanding acknowledgements', done: false },
   { label: 'Pending traffic reviewed before handover', done: false },
   { label: 'Open action items carried forward', done: false },
-  { label: 'EMCON and connectivity status confirmed', done: false },
+  { label: 'Command server and C2OIX circuit status confirmed', done: false },
 ];
