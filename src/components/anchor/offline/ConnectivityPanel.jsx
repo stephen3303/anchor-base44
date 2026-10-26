@@ -7,16 +7,21 @@ import { formatZulu } from '@/data/anchorSampleData';
 import useConnectivity from '@/hooks/useConnectivity';
 import ReportLinkDialog from '@/components/anchor/ReportLinkDialog';
 
-const LINK_STYLE = {
+const TONE = {
   up: { chip: 'border-lifecycle-active/40 bg-lifecycle-active/5 text-lifecycle-active', dot: 'bg-[#2FBF71]' },
-  down: { chip: 'border-gold/70 bg-gold/15 text-navy-800', dot: 'bg-gold' },
-  unknown: { chip: 'border-line bg-secondary text-mutedink', dot: 'bg-mutedink/50' },
+  attention: { chip: 'border-gold/70 bg-gold/15 text-navy-800', dot: 'bg-gold' },
+  error: { chip: 'border-lifecycle-cancelled/50 bg-lifecycle-cancelled/10 text-lifecycle-cancelled', dot: 'bg-[#C8102E]' },
 };
 
-const LinkRow = ({ title, state, stateLabel, description, meta }) => {
-  const style = LINK_STYLE[state] || LINK_STYLE.unknown;
+const LinkRow = ({ title, tone, stateLabel, description, meta }) => {
+  const style = TONE[tone] || TONE.attention;
   return (
-    <div className="rounded-sm border border-line bg-white p-3">
+    <div
+      className={cn(
+        'rounded-sm border p-3',
+        tone === 'error' ? 'border-lifecycle-cancelled/40 bg-lifecycle-cancelled/5' : 'border-line bg-white',
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <span aria-hidden="true" className={cn('h-2.5 w-2.5 rounded-full', style.dot)} />
         <span className="text-[13px] font-semibold text-ink">{title}</span>
@@ -41,33 +46,31 @@ export default function ConnectivityPanel({ queueLength }) {
   const [open, setOpen] = useState(false);
 
   const circuitLabel = circuit?.external_label || 'C2OIX circuit';
-  const localState = local === 'down' ? 'down' : local === 'up' ? 'up' : 'unknown';
+  const serverDown = local === 'down';
 
   return (
     <div className="space-y-3">
       <div className="grid gap-3 lg:grid-cols-2">
         <LinkRow
           title={circuit?.local_label || 'Command Server'}
-          state={localState}
-          stateLabel={localState === 'up' ? 'Up' : localState === 'down' ? 'Unreachable' : 'Not measured'}
+          tone={serverDown ? 'error' : 'up'}
+          stateLabel={serverDown ? 'Not available' : 'Connected'}
           meta={checkedAt ? `checked ${formatZulu(checkedAt)}` : null}
           description={
-            localState === 'up'
-              ? 'The server at this command is answering. It holds the message database, so traffic is readable and every action — drafting, routing, filing — is recorded here.'
-              : localState === 'down'
-                ? 'This workstation cannot reach the command server. Nothing can be read or written until it answers again.'
-                : 'Measuring the command server.'
+            serverDown
+              ? 'Local ANCHOR server not available. This workstation cannot reach the command server at this command, so traffic cannot be read or written until it answers. Work already on screen stays visible; nothing new is recorded. Use Re-check once the server is back.'
+              : 'The local ANCHOR server at this command is answering. It holds the message database, so traffic is readable and every action — drafting, routing, filing — is recorded here. This link is expected to be up whenever the portal is open.'
           }
         />
 
         <LinkRow
           title={circuitLabel}
-          state={offline ? 'down' : 'up'}
-          stateLabel={offline ? 'Down' : 'Up'}
+          tone={offline && !serverDown ? 'attention' : 'up'}
+          stateLabel={offline && !serverDown ? 'Down' : 'Up'}
           meta={circuit?.reported_at ? `reported ${formatZulu(circuit.reported_at)}` : null}
           description={
-            offline
-              ? `Offline mode. The command server is up, so work continues: traffic stays readable and drafts can be written, routed and released. Anything that has to leave the command waits here for the circuit.${circuit?.note ? ` Reported note: ${circuit.note}` : ''}`
+            offline && !serverDown
+              ? `Offline mode. The local ANCHOR server is up, so work continues: traffic stays readable and drafts can be written, routed and released. Anything that has to leave the command waits here for the circuit.${circuit?.note ? ` Reported note: ${circuit.note}` : ''}`
               : 'Traffic flows in and out of the command. Releases transmit as they are released and acknowledgements are recorded as they are given.'
           }
         />
@@ -90,7 +93,7 @@ export default function ConnectivityPanel({ queueLength }) {
           disabled={checking}
         >
           <RefreshCw className={cn('h-3.5 w-3.5', checking && 'animate-spin')} aria-hidden="true" />
-          {checking ? 'Checking…' : 'Re-check command server'}
+          {checking ? 'Checking…' : 'Re-check ANCHOR server'}
         </Button>
         {queueLength > 0 && (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-mutedink">

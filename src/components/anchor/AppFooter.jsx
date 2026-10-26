@@ -7,7 +7,7 @@ export default function AppFooter({ local, external, className }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-4 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mutedink sm:px-8">
         <span className="text-navy-800">Secure · Reliable · Mission Ready</span>
         <span className="normal-case tracking-normal text-mutedink/90">
-          {local === 'down' ? 'Command server unreachable' : 'Command server up'} ·{' '}
+          {local === 'down' ? 'Local ANCHOR server not available' : 'Local ANCHOR server connected'} ·{' '}
           {external === 'up' ? 'C2OIX circuit up' : 'C2OIX circuit down — offline mode'}
         </span>
       </div>

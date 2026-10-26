@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import AppHeader from './AppHeader';
@@ -29,13 +30,32 @@ export default function AppLayout() {
         <AppSidebar className="sticky top-[94px] hidden h-[calc(100vh-94px)] border-r border-navy-800/70 lg:flex" />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {offline && (
-            <div className="border-b border-gold/45 bg-gold/20 px-4 py-2 text-[12.5px] text-ink anchor-no-print">
-              <span className="font-semibold uppercase tracking-[0.1em]">Offline mode.</span>{' '}
-              {local === 'down'
-                ? 'This workstation cannot reach the command server, so nothing can be read or written yet.'
-                : 'The C2OIX circuit is down. The command server is up, so work continues: traffic stays readable and drafts can be written, routed and released. Transmission — releases and acknowledgements — is held and goes out when the circuit is restored.'}
+          {local === 'down' ? (
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-lifecycle-cancelled/50 bg-lifecycle-cancelled/10 px-4 py-2.5 text-[12.5px] text-ink anchor-no-print">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-lifecycle-cancelled" aria-hidden="true" />
+              <span className="font-semibold uppercase tracking-[0.1em] text-lifecycle-cancelled">
+                Local ANCHOR server not available.
+              </span>
+              <span>
+                This workstation cannot reach the command server at this command, so traffic cannot be read or written
+                and nothing new is recorded. Work already on screen stays visible.
+              </span>
+              <Link
+                to="/offline"
+                className="ml-auto shrink-0 font-semibold text-navy-600 underline decoration-navy-600/30 underline-offset-2"
+              >
+                Check connectivity
+              </Link>
             </div>
+          ) : (
+            offline && (
+              <div className="border-b border-gold/45 bg-gold/20 px-4 py-2 text-[12.5px] text-ink anchor-no-print">
+                <span className="font-semibold uppercase tracking-[0.1em]">Offline mode.</span> The C2OIX circuit is
+                down. The local ANCHOR server is up, so work continues: traffic stays readable and drafts can be written,
+                routed and released. Transmission — releases and acknowledgements — is held and goes out when the
+                circuit is restored.
+              </div>
+            )
           )}
 
           <AlertStrip pending={pending.length} overdue={overdue} nextDue={nextDue} />

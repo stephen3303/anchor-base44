@@ -4,7 +4,7 @@
   "properties": {
     "local_label": {
       "type": "string",
-      "default": "Command Server"
+      "default": "Local ANCHOR Server"
     },
     "external_label": {
       "type": "string",
