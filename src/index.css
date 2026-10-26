@@ -135,8 +135,62 @@
   }
 }
 
+/* Print rendition: classification banner on every page, a per-copy watermark and
+   attribution of the copy. AI panels and interface chrome never print. */
+.anchor-print-only {
+  display: none;
+}
+
 @media print {
   .anchor-no-print {
+    display: none !important;
+  }
+
+  .anchor-print-only {
+    display: block !important;
+  }
+
+  .anchor-print-banner {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+  }
+
+  .anchor-print-watermark {
+    position: fixed;
+    top: 45%;
+    left: 0;
+    right: 0;
+    z-index: 55;
+    text-align: center;
+    font-family: var(--font-heading);
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: rgba(15, 45, 92, 0.08);
+    transform: rotate(-24deg);
+    pointer-events: none;
+  }
+
+  .anchor-print-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    border-top: 1px solid #dbe2ec;
+    padding: 4px 0;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4a5a72;
+  }
+
+  .anchor-ai-panel {
     display: none !important;
   }
 }

@@ -1,17 +1,59 @@
 {
-  "properties": {
-    "role": {
-      "type": "string",
-      "description": "The role of the user in the app",
-      "enum": [
-        "admin",
-        "user"
-      ]
-    }
-  },
-  "required": [
-    "role"
-  ],
   "name": "User",
-  "type": "object"
+  "type": "object",
+  "properties": {
+    "rank": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "duty": {
+      "type": "string"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notification_preferences": {
+      "type": "object",
+      "properties": {
+        "in_app": {
+          "type": "boolean",
+          "default": true
+        },
+        "email": {
+          "type": "boolean",
+          "default": true
+        },
+        "digest": {
+          "type": "string",
+          "enum": [
+            "real_time",
+            "daily",
+            "weekly"
+          ],
+          "default": "real_time"
+        },
+        "flash": {
+          "type": "boolean",
+          "default": true
+        },
+        "immediate": {
+          "type": "boolean",
+          "default": true
+        },
+        "priority": {
+          "type": "boolean",
+          "default": true
+        },
+        "routine": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
 }

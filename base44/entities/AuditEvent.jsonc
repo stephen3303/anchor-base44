@@ -1,0 +1,70 @@
+{
+  "name": "AuditEvent",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "number"
+    },
+    "action": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "read",
+        "act",
+        "govern",
+        "admin",
+        "system"
+      ],
+      "default": "act"
+    },
+    "actor_email": {
+      "type": "string"
+    },
+    "actor_name": {
+      "type": "string"
+    },
+    "actor_role": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "target_type": {
+      "type": "string"
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "target_reference": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
+    "recorded_at": {
+      "type": "string"
+    },
+    "prev_hash": {
+      "type": "string"
+    },
+    "hash": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "seq",
+    "action"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}

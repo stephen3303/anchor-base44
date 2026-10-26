@@ -1,0 +1,96 @@
+{
+  "name": "AlertRule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "number",
+      "default": 10
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "ack_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "ack_window_hours": {
+      "type": "number",
+      "default": 12
+    },
+    "escalate_to_role": {
+      "type": "string"
+    },
+    "escalate_after_hours": {
+      "type": "number",
+      "default": 4
+    },
+    "match_precedence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "match_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "match_communities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "match_originators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_by_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
