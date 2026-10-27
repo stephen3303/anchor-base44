@@ -1,14 +1,22 @@
-import { CLASSIFICATION_SHORT, numberedParagraphs } from '@/lib/ntp';
+import {
+  CLASSIFICATION_SHORT,
+  numberedParagraphs,
+  receivedDecl,
+  receivedMsgid,
+  receivedPoc,
+  receivedRefs,
+} from '@/lib/ntp';
 
 /**
  * The message as it arrived — plain teletype text.
  *
- * Routing header, classification, subject, references and every paragraph, in
- * the order received. No rendering, no headings and nothing removed.
+ * Routing header, classification with SSIC, general message title, MSGID,
+ * subject, REF sets with their AMPN or NARR, POC, every paragraph and the DECL
+ * set when one was recorded, in the order received. No rendering, no headings
+ * and nothing removed.
  */
 
 const up = (value) => String(value || '').toUpperCase();
-const refLabel = (index) => String.fromCharCode(65 + index);
 const PROSIGN = { FLASH: 'Z', IMMEDIATE: 'O', PRIORITY: 'P', ROUTINE: 'R' };
 
 const splitAddresses = (value) =>
@@ -31,21 +39,23 @@ export const buildReceivedText = (message) => {
   info.forEach((entry, i) => lines.push(`${i === 0 ? 'INFO' : '    '} ${entry}`));
 
   lines.push('BT');
-  lines.push(CLASSIFICATION_SHORT[message.classification] || 'UNCLAS');
-  lines.push('');
+  lines.push(`${CLASSIFICATION_SHORT[message.classification] || 'UNCLAS'} //${up(message.ssic) || '-'}//`);
+  if (message.general_message_id) lines.push('', up(message.general_message_id));
+  lines.push('', receivedMsgid(message), '');
   lines.push(`SUBJ/${up(message.subject)}//`);
 
-  const refs = message.relates_to || [];
-  if (refs.length) {
-    lines.push('');
-    refs.forEach((ref, i) => lines.push(`REF/${refLabel(i)}/MSG/${up(ref)}//`));
-  }
+  const refs = receivedRefs(message.references);
+  if (refs.length) lines.push('', ...refs);
+
+  if (message.poc) lines.push('', receivedPoc(message.poc));
 
   lines.push('');
   lines.push(numberedParagraphs((message.sections || []).map((section) => section.body)));
-  lines.push('');
-  lines.push('BT');
-  lines.push('NNNN');
+
+  const decl = receivedDecl(message);
+  if (decl) lines.push('', decl);
+
+  lines.push('', 'BT', 'NNNN');
 
   return lines.join('\n');
 };

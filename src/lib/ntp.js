@@ -124,6 +124,37 @@ const cleanAmplification = (ref, transform = up) =>
     .replace(/[.\s]+$/, '')
     .trim();
 
+/** MSGID set of a received record: MSGID/GENADMIN/<PLA>/<MSN>/<MON YY>// */
+export const receivedMsgid = (message) => {
+  const pla = splitOfficeCodes(message.originator).pla || '-';
+  const month = (String(message.dtg || '').match(/Z\s*([A-Z]{3})\s*(\d{2})/) || []).slice(1).join(' ') || '-';
+  return `MSGID/GENADMIN/${pla}/${up(message.msn) || '-'}/${month}//`;
+};
+
+/** POC set: POC/<NAME>/<RANK>/<LOCATION>/-/TEL: <PHONE>// */
+export const receivedPoc = (poc) =>
+  `POC/${up(poc.name) || '-'}/${up(poc.rank) || '-'}/${up(poc.location) || '-'}/-/TEL: ${up(poc.phone) || '-'}//`;
+
+/** The POC on one line for the record metadata block. */
+export const pocSummary = (poc) => (poc ? `${poc.rank} ${poc.name}, ${poc.location} · ${poc.phone}` : '');
+
+/** DECL set; a record carries it when the command recorded a declaration. */
+export const receivedDecl = (message) => (message.decl ? `DECL/${up(message.decl)}//` : null);
+
+/** REF sets in order, with the AMPN or NARR line that explains them (Annex A, A102l). */
+export const receivedRefs = (references) => {
+  const refs = references || [];
+  const lines = refs.map((r, i) => wrapLines(`REF/${refLabel(i)}/${normalizeKind(r.kind)}/${up(r.value)}//`));
+  const explained = refs.map((r, i) => ({ r, i })).filter(({ r }) => cleanAmplification(r));
+  if (refs.length === 1 && explained.length) {
+    lines.push(wrapLines(`AMPN/REF A IS ${cleanAmplification(refs[0])}.//`));
+  } else if (refs.length > 1 && explained.length) {
+    const narr = explained.map(({ r, i }) => `REF ${refLabel(i)} IS ${cleanAmplification(r)}.`).join(' ');
+    lines.push(wrapLines(`NARR/${narr}//`));
+  }
+  return lines;
+};
+
 export const numberedParagraphs = (paragraphs) =>
   (paragraphs || [])
     .map((p) => String(p || '').trim())

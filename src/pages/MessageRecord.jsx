@@ -17,6 +17,7 @@ import useTemplates from '@/hooks/useTemplates';
 import MessageOriginalText from '@/components/anchor/MessageOriginalText';
 import MessagePlainTextView from '@/components/anchor/MessagePlainTextView';
 import Dtg from '@/components/anchor/Dtg';
+import { pocSummary, receivedDecl, receivedMsgid } from '@/lib/ntp';
 
 const VIEWS = [
   { id: 'record', label: 'Record view' },
@@ -177,6 +178,10 @@ export default function MessageRecord() {
             <Meta label="Originator (FM)" value={message.originator} />
             <Meta label="Action (TO)" value={message.to} />
             <Meta label="Info" value={message.info} />
+            <Meta label="SSIC" value={message.ssic} />
+            <Meta label="MSGID" value={receivedMsgid(message)} />
+            <Meta label="POC" value={pocSummary(message.poc)} />
+            <Meta label="DECL" value={receivedDecl(message)} />
             <Meta label="Communities" value={(message.communities || []).join(', ')} />
           </dl>
 
