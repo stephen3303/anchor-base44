@@ -24,7 +24,6 @@ import NetworkTopology from '@/pages/NetworkTopology';
 import Subscriptions from '@/pages/Subscriptions';
 import Briefings from '@/pages/Briefings';
 import WatchTurnover from '@/pages/WatchTurnover';
-import Offline from '@/pages/Offline';
 import Profile from '@/pages/Profile';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -80,7 +79,6 @@ const AuthenticatedApp = () => {
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/briefings" element={<Briefings />} />
           <Route path="/watch-turnover" element={<WatchTurnover />} />
-          <Route path="/offline" element={<Offline />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/admin" element={<Admin />} />

@@ -15,7 +15,7 @@ export default function IngestStatusBanner() {
         escalation follow.
       </span>
       <Link
-        to="/offline"
+        to="/network-topology"
         className="ml-auto shrink-0 font-semibold text-navy-600 underline decoration-navy-600/30 underline-offset-2"
       >
         Connectivity

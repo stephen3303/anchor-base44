@@ -49,7 +49,7 @@ export default function AppLayout() {
                 and nothing new is recorded. Work already on screen stays visible.
               </span>
               <Link
-                to="/offline"
+                to="/network-topology"
                 className="ml-auto shrink-0 font-semibold text-navy-600 underline decoration-navy-600/30 underline-offset-2"
               >
                 Check connectivity

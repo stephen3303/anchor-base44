@@ -3,7 +3,6 @@ import {
   BarChart3,
   Bell,
   ClipboardList,
-  CloudOff,
   FileText,
   Home,
   Inbox,
@@ -34,7 +33,6 @@ const GROUPS = [
       { to: '/subscriptions', label: 'Subscriptions', icon: Bell },
       { to: '/briefings', label: 'Briefings', icon: FileText },
       { to: '/watch-turnover', label: 'Watch Turnover', icon: ClipboardList },
-      { to: '/offline', label: 'Offline Mode', icon: CloudOff },
     ],
   },
   {
