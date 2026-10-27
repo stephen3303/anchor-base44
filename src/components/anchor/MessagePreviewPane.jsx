@@ -14,10 +14,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import PrecedenceBadge from './PrecedenceBadge';
 import LifecycleBadge from './LifecycleBadge';
-import useAlertRules from '@/hooks/useAlertRules';
-import useSubscriptions from '@/hooks/useSubscriptions';
-import { deliveryReasons } from '@/lib/delivery';
-import { formatShort, formatZulu, messageByReference } from '@/data/anchorSampleData';
+import { formatZulu, messageByReference } from '@/data/anchorSampleData';
 import Dtg from './Dtg';
 
 function MetaRow({ label, children }) {
@@ -34,16 +31,12 @@ function MetaRow({ label, children }) {
 export default function MessagePreviewPane({ message, onClose }) {
   const { toast } = useToast();
   const [shareOpen, setShareOpen] = useState(false);
-  const rules = useAlertRules();
-  const { subscriptions } = useSubscriptions();
   const shareUrl = message ? `${window.location.origin}/messages/${message.id}` : '';
 
   // Nothing is shown until a record is selected — no placeholder card.
   if (!message) return null;
 
   const replacement = message.replaced_by ? messageByReference(message.replaced_by) : null;
-  const reasons = deliveryReasons(message, { rules, subscriptions });
-
   const copyLink = async () => {
     await navigator.clipboard.writeText(shareUrl);
     toast({
@@ -95,21 +88,8 @@ export default function MessagePreviewPane({ message, onClose }) {
           <MetaRow label="Communities">{message.communities.join(' · ')}</MetaRow>
         </dl>
 
-        {/* Why this record reached this user — the rule or the feed behind it. */}
-        <div className="border-b border-line pb-3">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">Why you are seeing this</p>
-          <ul className="mt-1.5 space-y-1">
-            {reasons.map((reason) => (
-              <li key={`${reason.kind}-${reason.label}`} className="text-[12px] leading-snug text-ink">
-                <span className="font-semibold">{reason.label}</span>
-                <span className="text-mutedink"> — {reason.note}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
         {/* Official text always renders first and never contains AI content. */}
-        <div className="pt-3">
+        <div className="border-t border-line pt-3">
           <p className="mb-2 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-navy-800">
             <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
             Official text — verbatim, uneditable

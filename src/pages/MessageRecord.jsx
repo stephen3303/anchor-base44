@@ -8,10 +8,7 @@ import PrintWatermark from '@/components/anchor/PrintWatermark';
 import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
 import LifecycleBadge from '@/components/anchor/LifecycleBadge';
 import { useAuth } from '@/lib/AuthContext';
-import useAlertRules from '@/hooks/useAlertRules';
-import useSubscriptions from '@/hooks/useSubscriptions';
 import { recordAudit } from '@/lib/audit';
-import { deliveryReasons } from '@/lib/delivery';
 import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSampleData';
 import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
@@ -35,8 +32,6 @@ const Meta = ({ label, value }) => (
 export default function MessageRecord() {
   const { id } = useParams();
   const { user } = useAuth();
-  const rules = useAlertRules();
-  const { subscriptions } = useSubscriptions();
   const [superseding, setSuperseding] = useState([]);
   const [view, setView] = useState('record');
 
@@ -182,18 +177,6 @@ export default function MessageRecord() {
             <Meta label="Communities" value={(message.communities || []).join(', ')} />
           </dl>
 
-        </div>
-
-        <div className="border-t border-line px-4 py-4 sm:px-6">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">Why you are seeing this</h2>
-          <ul className="mt-2 space-y-1.5">
-            {deliveryReasons(message, { rules, subscriptions }).map((reason) => (
-              <li key={`${reason.kind}-${reason.label}`} className="text-[12.5px] leading-snug text-ink">
-                <span className="font-semibold">{reason.label}</span>
-                <span className="text-mutedink"> — {reason.note}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <MessageOriginalText message={message} />
