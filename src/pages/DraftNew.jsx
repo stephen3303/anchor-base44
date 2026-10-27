@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import PrecedenceBadge from '@/components/anchor/PrecedenceBadge';
 import NewTemplateDialog from '@/components/anchor/NewTemplateDialog';
 import SourceMessageActions from '@/components/anchor/drafting/SourceMessageActions';
+import TemplateTagSummary from '@/components/anchor/templates/TemplateTagSummary';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 import { BASE_DRAFT, derivationDraft, responseDraft } from '@/lib/draftPrefill';
+import { templateDraft, templateUse } from '@/lib/templateMatch';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function DraftNew() {
@@ -22,7 +24,7 @@ export default function DraftNew() {
 
   const loadTemplates = async () => {
     const list = await base44.entities.MessageTemplate.list();
-    setTemplates(list.filter((t) => t.active !== false));
+    setTemplates(list.filter((t) => t.active !== false && templateUse(t) !== 'validate'));
   };
 
   useEffect(() => {
@@ -46,16 +48,7 @@ export default function DraftNew() {
     }
   };
 
-  const fromTemplate = (template) =>
-    create({
-      subject: template.default_subject || '',
-      message_type: template.message_type || BASE_DRAFT.message_type,
-      action_addressees: template.default_action_addressees || [],
-      paragraphs: (template.default_paragraphs || ['']).slice(),
-      template_id: template.id,
-      template_name: template.name,
-      template_class: template.template_class,
-    });
+  const fromTemplate = (template) => create(templateDraft(template));
 
   const fromMessage = (message, type) => create(derivationDraft(message, type));
 
@@ -98,6 +91,7 @@ export default function DraftNew() {
                 </span>
               </div>
               <p className="mt-1.5 text-[12px] leading-snug text-mutedink">{template.description}</p>
+              <TemplateTagSummary template={template} showUse className="mt-1.5" />
               <p className="mt-2 text-[11.5px] leading-snug text-mutedink">{template.guidance}</p>
             </button>
           ))}

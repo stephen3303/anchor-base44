@@ -46,6 +46,45 @@
         "type": "string"
       }
     },
+    "trigger_use": {
+      "type": "string",
+      "enum": [
+        "both",
+        "draft",
+        "validate"
+      ],
+      "default": "both"
+    },
+    "tag_message_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tag_originators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tag_communities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tag_precedence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tag_subject_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "active": {
       "type": "boolean",
       "default": true

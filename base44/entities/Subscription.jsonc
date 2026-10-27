@@ -40,6 +40,12 @@
         "type": "string"
       }
     },
+    "criteria_template_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "criteria_types": {
       "type": "array",
       "items": {
@@ -53,6 +59,12 @@
       }
     },
     "criteria_precedence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "criteria_originators": {
       "type": "array",
       "items": {
         "type": "string"

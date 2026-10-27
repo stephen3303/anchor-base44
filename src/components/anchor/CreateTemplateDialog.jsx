@@ -15,6 +15,16 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { splitAddressees } from '@/lib/draftPrefill';
+import TemplateTriggerEditor from '@/components/anchor/templates/TemplateTriggerEditor';
+
+const EMPTY_TAGS = {
+  trigger_use: 'both',
+  tag_message_types: [],
+  tag_originators: [],
+  tag_communities: [],
+  tag_precedence: [],
+  tag_subject_keywords: [],
+};
 
 const Captured = ({ label, value }) => (
   <div className="flex gap-2">
@@ -29,6 +39,7 @@ export default function CreateTemplateDialog({ open, onOpenChange, message }) {
   const [name, setName] = useState('');
   const [templateClass, setTemplateClass] = useState('standard');
   const [description, setDescription] = useState('');
+  const [tags, setTags] = useState(EMPTY_TAGS);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -36,6 +47,11 @@ export default function CreateTemplateDialog({ open, onOpenChange, message }) {
     setName(message.subject);
     setTemplateClass('standard');
     setDescription(`Captured from ${message.reference} — ${message.subject}`);
+    setTags({
+      ...EMPTY_TAGS,
+      tag_message_types: message.type ? [message.type] : [],
+      tag_communities: message.communities || [],
+    });
   }, [open, message]);
 
   const save = async () => {
@@ -56,6 +72,7 @@ export default function CreateTemplateDialog({ open, onOpenChange, message }) {
         default_action_addressees: splitAddressees(message.to),
         default_paragraphs: message.sections.map((section) => section.body),
         paragraph_prompts: message.sections.map((section) => section.heading),
+        ...tags,
         active: true,
       });
       toast({
@@ -75,7 +92,7 @@ export default function CreateTemplateDialog({ open, onOpenChange, message }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-[16px]">Create a template from this message</DialogTitle>
           <DialogDescription className="text-[12px] leading-snug text-mutedink">
@@ -114,6 +131,8 @@ export default function CreateTemplateDialog({ open, onOpenChange, message }) {
               className="text-[13px]"
             />
           </div>
+
+          <TemplateTriggerEditor value={tags} onChange={(patch) => setTags((prev) => ({ ...prev, ...patch }))} />
 
           <div className="rounded-sm border border-line bg-secondary/50 px-3 py-2.5">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">Captured</p>

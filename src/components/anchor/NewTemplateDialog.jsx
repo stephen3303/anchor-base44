@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import CommaListInput from '@/components/anchor/drafting/CommaListInput';
 import { MESSAGE_TYPES } from '@/data/draftOptions';
+import TemplateTriggerEditor from '@/components/anchor/templates/TemplateTriggerEditor';
 
 const FIELD = 'text-[13px]';
 const LABEL = 'text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink';
@@ -29,6 +30,12 @@ const EMPTY = {
   default_subject: '',
   action_addressees: [],
   prompts: '',
+  trigger_use: 'both',
+  tag_message_types: [],
+  tag_originators: [],
+  tag_communities: [],
+  tag_precedence: [],
+  tag_subject_keywords: [],
 };
 
 /** Builds a template from scratch: nothing is captured from an existing message. */
@@ -65,6 +72,12 @@ export default function NewTemplateDialog({ open, onOpenChange, onCreated }) {
         default_action_addressees: form.action_addressees,
         paragraph_prompts: prompts,
         default_paragraphs: prompts.map(() => ''),
+        trigger_use: form.trigger_use,
+        tag_message_types: form.tag_message_types,
+        tag_originators: form.tag_originators,
+        tag_communities: form.tag_communities,
+        tag_precedence: form.tag_precedence,
+        tag_subject_keywords: form.tag_subject_keywords,
         active: true,
       });
       toast({
@@ -168,6 +181,8 @@ export default function NewTemplateDialog({ open, onOpenChange, onCreated }) {
               Each line becomes a numbered paragraph, shown to the drafter as the prompt for that paragraph.
             </p>
           </div>
+
+          <TemplateTriggerEditor value={form} onChange={set} />
 
           <div className="space-y-1.5">
             <Label className={LABEL}>Description</Label>

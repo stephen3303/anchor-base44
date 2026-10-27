@@ -14,6 +14,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
 import useSubscriptions from '@/hooks/useSubscriptions';
+import useTemplates from '@/hooks/useTemplates';
 import { recordAudit } from '@/lib/audit';
 import { criteriaLabel, FREQUENCY_LABEL } from '@/lib/subscriptions';
 
@@ -25,6 +26,7 @@ export default function ApprovalQueue() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { subscriptions, update } = useSubscriptions();
+  const { templates } = useTemplates();
   const [decision, setDecision] = useState(null);
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
@@ -81,7 +83,7 @@ export default function ApprovalQueue() {
                     {subscription.category}
                   </span>
                   <span className="anchor-mono ml-auto text-[11px] text-mutedink">
-                    {FREQUENCY_LABEL[subscription.frequency]} · {criteriaLabel(subscription)}
+                    {FREQUENCY_LABEL[subscription.frequency]} · {criteriaLabel(subscription, templates)}
                   </span>
                 </div>
                 <p className="mt-1 text-[11.5px] text-mutedink">

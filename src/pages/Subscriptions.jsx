@@ -7,6 +7,7 @@ import RequestSubscriptionDialog from '@/components/anchor/subscriptions/Request
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
 import useSubscriptions from '@/hooks/useSubscriptions';
+import useTemplates from '@/hooks/useTemplates';
 import { recordAudit } from '@/lib/audit';
 import { CATEGORIES, canPause } from '@/lib/subscriptions';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ export default function Subscriptions() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { subscriptions, loading, request, update } = useSubscriptions();
+  const { templates } = useTemplates();
   const [category, setCategory] = useState('all');
   const [requestOpen, setRequestOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -119,6 +121,7 @@ export default function Subscriptions() {
                     subscription={subscription}
                     onTogglePause={togglePause}
                     busy={busy}
+                    templates={templates}
                   />
                 ))}
               </div>
@@ -138,6 +141,7 @@ export default function Subscriptions() {
                     subscription={subscription}
                     onTogglePause={togglePause}
                     busy={busy}
+                    templates={templates}
                   />
                 ))}
               </div>
@@ -146,7 +150,12 @@ export default function Subscriptions() {
         </div>
       </div>
 
-      <RequestSubscriptionDialog open={requestOpen} onOpenChange={setRequestOpen} onRequest={request} />
+      <RequestSubscriptionDialog
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        onRequest={request}
+        templates={templates}
+      />
     </div>
   );
 }

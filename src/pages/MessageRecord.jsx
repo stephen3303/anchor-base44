@@ -12,6 +12,8 @@ import { recordAudit } from '@/lib/audit';
 import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSampleData';
 import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
+import TemplateEvaluation from '@/components/anchor/templates/TemplateEvaluation';
+import useTemplates from '@/hooks/useTemplates';
 import MessageOriginalText from '@/components/anchor/MessageOriginalText';
 import MessagePlainTextView from '@/components/anchor/MessagePlainTextView';
 import Dtg from '@/components/anchor/Dtg';
@@ -32,6 +34,7 @@ const Meta = ({ label, value }) => (
 export default function MessageRecord() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { templates } = useTemplates();
   const [superseding, setSuperseding] = useState([]);
   const [view, setView] = useState('record');
 
@@ -177,6 +180,7 @@ export default function MessageRecord() {
             <Meta label="Communities" value={(message.communities || []).join(', ')} />
           </dl>
 
+          <TemplateEvaluation message={message} templates={templates} user={user} />
         </div>
 
         <MessageOriginalText message={message} />

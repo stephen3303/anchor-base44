@@ -1,7 +1,8 @@
 import { Pause, Play, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CHANNEL_LABEL, criteriaLabel, FREQUENCY_LABEL, STATUS_LABEL } from '@/lib/subscriptions';
+import { CHANNEL_LABEL, criteriaLabel, feedCoverage, FREQUENCY_LABEL, STATUS_LABEL } from '@/lib/subscriptions';
+import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 
 const STATUS_STYLE = {
   active: 'border-lifecycle-active/40 bg-lifecycle-active/5 text-lifecycle-active',
@@ -10,9 +11,10 @@ const STATUS_STYLE = {
   denied: 'border-lifecycle-cancelled/50 bg-lifecycle-cancelled/5 text-lifecycle-cancelled',
 };
 
-export default function SubscriptionCard({ subscription, onTogglePause, busy }) {
+export default function SubscriptionCard({ subscription, onTogglePause, busy, templates = [] }) {
   const status = STATUS_STYLE[subscription.status] || STATUS_STYLE.paused;
   const pausable = !subscription.mandatory && (subscription.status === 'active' || subscription.status === 'paused');
+  const covered = feedCoverage(subscription, SAMPLE_MESSAGES, templates).length;
 
   return (
     <article className="rounded-md border border-line bg-white px-3.5 py-3 shadow-sm">
@@ -31,10 +33,13 @@ export default function SubscriptionCard({ subscription, onTogglePause, busy }) 
 
       <p className="mt-1 text-[12px] text-mutedink">{subscription.description}</p>
       <p className="mt-1.5 text-[11.5px] text-mutedink">
-        {subscription.category} · {FREQUENCY_LABEL[subscription.frequency]} · {criteriaLabel(subscription)}
+        {subscription.category} · {FREQUENCY_LABEL[subscription.frequency]} · {criteriaLabel(subscription, templates)}
         {subscription.channels?.length
           ? ` · ${subscription.channels.map((channel) => CHANNEL_LABEL[channel] || channel).join(' + ')}`
           : ''}
+      </p>
+      <p className="mt-0.5 text-[11px] text-mutedink">
+        Covers {covered} of the {SAMPLE_MESSAGES.length} messages held
       </p>
 
       {subscription.status === 'pending' && subscription.justification && (

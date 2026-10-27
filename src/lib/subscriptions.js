@@ -1,7 +1,13 @@
+import { templateMatches } from './templateMatch';
+
 /**
  * Subscriptions are user-requested topic feeds. Mandatory delivery is *not* a
  * subscription — that belongs to the alert rules — so nothing here can require an
  * acknowledgement, and a command baseline feed cannot be paused.
+ *
+ * A feed is defined by tagged templates where possible: a template keeps claiming
+ * its traffic when a subject line is reworded, which loose field criteria cannot.
+ * Field criteria remain as the broad fallback.
  */
 export const FREQUENCY_LABEL = { real_time: 'Real-time', daily: 'Daily digest', weekly: 'Weekly' };
 export const STATUS_LABEL = { active: 'Active', pending: 'Pending approval', denied: 'Denied', paused: 'Paused' };
@@ -21,20 +27,42 @@ export const CATEGORIES = [
 
 const overlaps = (list, values) => !list || list.length === 0 || (values || []).some((v) => list.includes(v));
 
-export const subscriptionMatches = (subscription, message) =>
-  overlaps(subscription.criteria_types, [message.type]) &&
-  overlaps(subscription.criteria_communities, message.communities) &&
-  overlaps(subscription.criteria_precedence, [message.precedence]) &&
-  (!subscription.criteria_originators?.length || subscription.criteria_originators.includes(message.originator));
+/** The templates this feed follows, resolved against the published set. */
+export const templateCriteria = (subscription, templates = []) =>
+  (subscription.criteria_template_ids || [])
+    .map((id) => templates.find((template) => template.id === id))
+    .filter(Boolean);
+
+export const subscriptionMatches = (subscription, message, templates = []) => {
+  const ids = subscription.criteria_template_ids || [];
+  const templateOk = ids.length === 0 || templateCriteria(subscription, templates).some((t) => templateMatches(t, message));
+
+  return (
+    templateOk &&
+    overlaps(subscription.criteria_types, [message.type]) &&
+    overlaps(subscription.criteria_communities, message.communities) &&
+    overlaps(subscription.criteria_precedence, [message.precedence]) &&
+    (!subscription.criteria_originators?.length || subscription.criteria_originators.includes(message.originator))
+  );
+};
 
 /** Feeds that would have delivered this message to the signed-in user. */
-export const activeFeedsFor = (subscriptions, message) =>
-  subscriptions.filter((s) => s.status === 'active' && subscriptionMatches(s, message));
+export const activeFeedsFor = (subscriptions, message, templates = []) =>
+  subscriptions.filter((s) => s.status === 'active' && subscriptionMatches(s, message, templates));
+
+/** The messages a feed would have delivered from a traffic set. */
+export const feedCoverage = (subscription, messages = [], templates = []) =>
+  (messages || []).filter((message) => subscriptionMatches(subscription, message, templates));
 
 export const canPause = (subscription) => !subscription.mandatory;
 
-export const criteriaLabel = (subscription) => {
+export const criteriaLabel = (subscription, templates = []) => {
   const parts = [];
+  const ids = subscription.criteria_template_ids || [];
+  if (ids.length) {
+    const names = templateCriteria(subscription, templates).map((template) => template.name);
+    parts.push(`Templates: ${names.length ? names.join(', ') : `${ids.length} tagged`}`);
+  }
   if (subscription.criteria_communities?.length) parts.push(subscription.criteria_communities.join(', '));
   if (subscription.criteria_types?.length) parts.push(subscription.criteria_types.join(', '));
   if (subscription.criteria_precedence?.length) parts.push(subscription.criteria_precedence.join(', '));

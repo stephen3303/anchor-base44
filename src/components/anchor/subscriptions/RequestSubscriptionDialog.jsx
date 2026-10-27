@@ -16,13 +16,15 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { recordAudit } from '@/lib/audit';
-import { CATEGORIES, FREQUENCY_LABEL } from '@/lib/subscriptions';
+import { CATEGORIES, FREQUENCY_LABEL, feedCoverage } from '@/lib/subscriptions';
+import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
+import TemplateCriteriaPicker from '@/components/anchor/subscriptions/TemplateCriteriaPicker';
 
 /**
  * Users create requests only. A request stays Pending Approval until an
  * administrator decides, and the justification travels with it.
  */
-export default function RequestSubscriptionDialog({ open, onOpenChange, onRequest }) {
+export default function RequestSubscriptionDialog({ open, onOpenChange, onRequest, templates = [] }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [form, setForm] = useState({
@@ -30,6 +32,7 @@ export default function RequestSubscriptionDialog({ open, onOpenChange, onReques
     category: CATEGORIES[0],
     frequency: 'daily',
     communities: '',
+    templateIds: [],
     inApp: true,
     email: false,
     justification: '',
@@ -38,6 +41,25 @@ export default function RequestSubscriptionDialog({ open, onOpenChange, onReques
 
   const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
+  const communities = () =>
+    form.communities
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  const toggleTemplate = (id) =>
+    set({ templateIds: form.templateIds.includes(id) ? form.templateIds.filter((entry) => entry !== id) : [...form.templateIds, id] });
+
+  const coverage = feedCoverage(
+    { status: 'active', criteria_template_ids: form.templateIds, criteria_communities: communities() },
+    SAMPLE_MESSAGES,
+    templates,
+  );
+
+  const templateNames = templates
+    .filter((template) => form.templateIds.includes(template.id))
+    .map((template) => template.name);
+
   const submit = async () => {
     setBusy(true);
     try {
@@ -45,15 +67,15 @@ export default function RequestSubscriptionDialog({ open, onOpenChange, onReques
       const row = await onRequest({
         name: form.name.trim(),
         category: form.category,
-        description: `Requested feed covering ${form.communities.trim() || form.category}`,
+        description: templateNames.length
+          ? `Requested feed following the tags of ${templateNames.join(', ')}`
+          : `Requested feed covering ${form.communities.trim() || form.category}`,
         frequency: form.frequency,
         status: 'pending',
         mandatory: false,
         channels: channels.length ? channels : ['in_app'],
-        criteria_communities: form.communities
-          .split(',')
-          .map((part) => part.trim())
-          .filter(Boolean),
+        criteria_template_ids: form.templateIds,
+        criteria_communities: communities(),
         justification: form.justification.trim(),
         requested_by_name: user?.full_name || '',
         requested_by_email: user?.email || '',
@@ -69,7 +91,7 @@ export default function RequestSubscriptionDialog({ open, onOpenChange, onReques
 
       toast({ title: 'Request submitted', description: `${row.name} · pending administrator approval.` });
       onOpenChange(false);
-      setForm({ ...form, name: '', communities: '', justification: '' });
+      setForm({ ...form, name: '', communities: '', templateIds: [], justification: '' });
     } finally {
       setBusy(false);
     }
@@ -131,7 +153,18 @@ export default function RequestSubscriptionDialog({ open, onOpenChange, onReques
 
           <div>
             <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-mutedink">
-              Communities covered
+              Follow by template tag
+            </Label>
+            <p className="mb-1 mt-0.5 text-[11px] leading-snug text-mutedink">
+              A tagged template claims its traffic whatever the subject line says, so the feed keeps working when an
+              originator rewords it.
+            </p>
+            <TemplateCriteriaPicker templates={templates} selected={form.templateIds} onToggle={toggleTemplate} />
+          </div>
+
+          <div>
+            <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-mutedink">
+              Communities covered — broad fallback
             </Label>
             <Input
               value={form.communities}
@@ -139,6 +172,22 @@ export default function RequestSubscriptionDialog({ open, onOpenChange, onReques
               placeholder="Cybersecurity, Policy"
               className="mt-1 h-9 border-line text-[12.5px]"
             />
+          </div>
+
+          <div className="rounded-sm border border-line bg-secondary/40 px-3 py-2.5">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-mutedink">Would deliver</p>
+            <p className="mt-1 text-[12px] text-ink">
+              {coverage.length} of {SAMPLE_MESSAGES.length} messages held in the traffic set
+            </p>
+            {coverage.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {coverage.slice(0, 3).map((message) => (
+                  <li key={message.id} className="anchor-mono text-[11px] text-mutedink">
+                    {message.reference} — {message.subject}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-4">
