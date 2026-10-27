@@ -12,7 +12,11 @@ import moment from 'moment';
 const now = moment.utc();
 const at = (minutes) => now.clone().add(minutes, 'minutes');
 const iso = (t) => t.toISOString();
-const dtgOf = (t) => `${t.format('DDHHmm')}Z ${t.format('MMM').toUpperCase()} ${t.format('YY')}`;
+// DDHHMMZ MON YY. 0000Z is never used; 0001Z stands in (NTP 3(J) ¶504).
+const dtgOf = (t) => {
+  const hm = t.format('HHmm') === '0000' ? '0001' : t.format('HHmm');
+  return `${t.format('DD')}${hm}Z ${t.format('MMM').toUpperCase()} ${t.format('YY')}`;
+};
 
 export const formatZulu = (value) => `${moment.utc(value).format('DD MMM YY HH:mm')}Z`;
 export const formatShort = (value) => `${moment.utc(value).format('DD MMM HH:mm')}Z`;
@@ -64,7 +68,7 @@ export const SAMPLE_MESSAGES = [
     to: 'ALCOMSUBLANT',
     info: 'COMNAVSEASYSCOM, COMSUBFOR, COMUSFLTFORCOM',
     source: 'C2OIX',
-    precedence: 'IMMEDIATE',
+    precedence: 'PRIORITY',
     classification: 'UNCLASSIFIED',
     lifecycle: 'ACTIVE',
     relates_to: [],
@@ -172,7 +176,7 @@ export const SAMPLE_MESSAGES = [
       {
         heading: 'Corrected copy',
         body:
-          'This corrected copy replaces COMSUBLANT MSG 118/26 in its entirety. The implementation deadline in paragraph 3 was stated incorrectly in the original; all other direction is unchanged.',
+          'This corrected copy replaces COMSUBLANT MSG 118/26 in its entirety. The implementation deadline in paragraph 3 was stated incorrectly in the original. All other direction is unchanged.',
       },
       {
         heading: 'Implementation',
@@ -451,7 +455,7 @@ export const SAMPLE_MESSAGES = [
     reference: 'COMSUBLANT MSG 116/26',
     dtg: dtgOf(at(-680)),
     received: iso(at(-676)),
-    subject: 'PORT VISIT COORDINATION — AMENDMENT 1',
+    subject: 'PORT VISIT COORDINATION - AMENDMENT 1',
     type: 'COMSUBLANT MSG',
     originator: 'COMSUBLANT NORFOLK VA',
     to: 'ALCOMSUBLANT',
@@ -634,7 +638,7 @@ export const SAMPLE_MESSAGES = [
       {
         heading: 'Expired direction',
         body:
-          'This message realigned training quotas for the previous fiscal quarter and has expired. Retained for reference only; no action is required.',
+          'This message realigned training quotas for the previous fiscal quarter and has expired. Retained for reference only. No action is required.',
       },
     ],
     attachments: [],
