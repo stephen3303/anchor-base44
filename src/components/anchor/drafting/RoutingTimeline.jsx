@@ -1,10 +1,16 @@
 import { cn } from '@/lib/utils';
 import { STEP_STATUS } from '@/lib/drafting';
+import { ROSTER_STATE, resolveRoute } from '@/lib/personnel';
 import { formatZulu } from '@/data/anchorSampleData';
 
-/** The route as defined: each step, who holds it, and where it stands. */
-export default function RoutingTimeline({ draft }) {
-  const steps = draft?.routing_steps || [];
+/**
+ * The route as it stands: each step, who holds it, and where it has got to.
+ *
+ * Who holds a step is read from the roster each time this renders, so a person on
+ * leave or detached from the command is visible on the chain rather than implied.
+ */
+export default function RoutingTimeline({ draft, personnel }) {
+  const steps = resolveRoute(draft?.routing_steps, personnel);
 
   return (
     <div className="space-y-5">
@@ -25,10 +31,20 @@ export default function RoutingTimeline({ draft }) {
                   <div className="min-w-0 flex-1">
                     <p className="text-[12.5px] font-semibold text-ink">{step.title}</p>
                     <p className="text-[11.5px] text-mutedink">
-                      {step.assignee_name || 'Unassigned'}
-                      {step.duty ? ` · ${step.duty}` : ''}
+                      {step.holder_name || 'Unassigned'}
+                      {step.holder_duty ? ` · ${step.holder_duty}` : ''}
                       {step.action === 'release' ? ' · release authority' : ''}
                     </p>
+                    {step.holder_state === 'detached' && (
+                      <p className={cn('text-[10.5px] font-semibold', ROSTER_STATE.detached.className)}>
+                        Detached from the command — this step cannot be worked until it is re-held.
+                      </p>
+                    )}
+                    {step.holder_state === 'leave' && (
+                      <p className={cn('text-[10.5px] font-semibold', ROSTER_STATE.leave.className)}>
+                        On leave — a covering watchstander acts on this step.
+                      </p>
+                    )}
                     {step.acted_at && (
                       <p className="anchor-mono text-[10.5px] text-mutedink">{formatZulu(step.acted_at)}</p>
                     )}

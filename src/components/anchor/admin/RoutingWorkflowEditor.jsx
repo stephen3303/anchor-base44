@@ -6,12 +6,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CommaListInput from '@/components/anchor/drafting/CommaListInput';
 import { MESSAGE_TYPES, STEP_ACTIONS } from '@/data/draftOptions';
-import { shortName } from '@/lib/personnel';
+import { resolveStep, shortName } from '@/lib/personnel';
 import { cn } from '@/lib/utils';
 import PersonnelSelect from './PersonnelSelect';
 import SearchableSelect from './SearchableSelect';
 
-const emptyStep = (order) => ({ order, title: '', duty: '', assignee_email: '', assignee_name: '', action: 'review' });
+const emptyStep = (order) => ({
+  order,
+  title: '',
+  duty: '',
+  personnel_id: '',
+  assignee_email: '',
+  assignee_name: '',
+  action: 'review',
+});
 
 /**
  * Defines a routing chain: what it matches on, and who holds each step.
@@ -55,7 +63,24 @@ export default function RoutingWorkflowEditor({ workflow, personnel, onSave, onC
     });
 
   const canSave = form.name.trim() && form.steps.some((s) => s.assignee_email);
-  const onRoster = (email) => (personnel || []).some((person) => person.email && person.email === email);
+
+  // Each step is described by the roster record behind it, read as it stands now.
+  const statusLine = (step) => {
+    if (!step.assignee_email) return 'Nobody holds this step yet — pick the person from the roster.';
+    const holder = resolveStep(step, personnel);
+    if (!holder.holder_state || holder.holder_state === 'absent') {
+      return `${step.assignee_name || 'The recorded holder'} is not on the roster — pick their successor.`;
+    }
+    if (holder.holder_state === 'detached') {
+      return `${holder.holder_name} is detached from the command — name their relief before saving.`;
+    }
+    if (holder.holder_state === 'leave') {
+      return `${holder.holder_name} is on leave — a covering watchstander should be named.`;
+    }
+    return holder.holder_duty
+      ? `Held by ${holder.holder_name} · ${holder.holder_duty}`
+      : `Held by ${holder.holder_name} — no position on their roster record.`;
+  };
 
   return (
     <div className="space-y-4 rounded-md border border-navy-600/40 bg-white p-4 shadow-sm">
@@ -149,6 +174,7 @@ export default function RoutingWorkflowEditor({ workflow, personnel, onSave, onC
                 value={step.assignee_email}
                 onChange={(person) =>
                   setStep(index, {
+                    personnel_id: person.id,
                     assignee_email: person.email,
                     assignee_name: shortName(person),
                     duty: person.position || '',
@@ -158,15 +184,7 @@ export default function RoutingWorkflowEditor({ workflow, personnel, onSave, onC
                 className="sm:col-span-2"
               />
             </div>
-            <p className="mt-1.5 text-[11px] text-mutedink">
-              {!step.assignee_email
-                ? 'Nobody holds this step yet — pick the person from the roster.'
-                : !onRoster(step.assignee_email)
-                  ? `${step.assignee_name || 'The recorded holder'} is not on the roster — pick their successor.`
-                  : step.duty
-                    ? `Held by ${step.assignee_name} · ${step.duty}`
-                    : `Held by ${step.assignee_name} — no position on their roster record.`}
-            </p>
+            <p className="mt-1.5 text-[11px] text-mutedink">{statusLine(step)}</p>
           </div>
         ))}
         <Button

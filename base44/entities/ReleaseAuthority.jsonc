@@ -2,6 +2,9 @@
   "name": "ReleaseAuthority",
   "type": "object",
   "properties": {
+    "personnel_id": {
+      "type": "string"
+    },
     "user_email": {
       "type": "string"
     },

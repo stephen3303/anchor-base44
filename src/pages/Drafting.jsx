@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus2, Inbox } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -20,6 +20,23 @@ const EMPTY = {
   released: 'Nothing has been released yet.',
 };
 
+/**
+ * Each tab is a query on the draft records, not a filter over a page held in the
+ * browser: the list shows what the database holds for that tab, up to the page size.
+ * Ownership anchors on the creator id, which is always stamped on the record.
+ */
+const TAB_QUERY = {
+  action: (me) => ({
+    $or: [
+      { draft_status: 'in_routing', assigned_to_email: me.email },
+      { draft_status: 'returned', created_by_id: me.id },
+    ],
+  }),
+  mine: (me) => ({ created_by_id: me.id }),
+  routing: () => ({ $or: [{ draft_status: 'in_routing' }, { draft_status: 'submitted' }] }),
+  released: () => ({ draft_status: 'released' }),
+};
+
 export default function Drafting() {
   const [drafts, setDrafts] = useState([]);
   const [user, setUser] = useState(null);
@@ -28,38 +45,36 @@ export default function Drafting() {
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      try {
-        const [{ items }, me] = await Promise.all([
-          base44.entities.DraftMessage.list({ sort: '-updated_date', limit: 100 }),
-          base44.auth.me(),
-        ]);
-        if (!alive) return;
-        setDrafts(items || []);
-        setUser(me);
-      } finally {
+    base44.auth
+      .me()
+      .then((me) => {
+        if (alive) setUser(me);
+      })
+      .catch(() => {
         if (alive) setLoading(false);
-      }
-    })();
+      });
     return () => {
       alive = false;
     };
   }, []);
 
-  const rows = useMemo(() => {
-    // Ownership anchors on the creator id, which is always stamped on the record.
-    const isMine = (d) => d.created_by_id === user?.id || (user?.email && d.created_by === user.email);
-    return drafts.filter((d) => {
-      if (tab === 'action') {
-        if (d.draft_status === 'in_routing') return d.assigned_to_email === user?.email;
-        if (d.draft_status === 'returned') return isMine(d);
-        return false;
-      }
-      if (tab === 'mine') return isMine(d);
-      if (tab === 'routing') return d.draft_status === 'in_routing' || d.draft_status === 'submitted';
-      return d.draft_status === 'released';
-    });
-  }, [drafts, tab, user]);
+  useEffect(() => {
+    if (!user) return undefined;
+    let alive = true;
+    setLoading(true);
+    base44.entities.DraftMessage.filter(TAB_QUERY[tab](user), { sort: '-updated_date', limit: 100 })
+      .then((page) => {
+        if (alive) setDrafts(page?.items || []);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [tab, user]);
+
+  const rows = drafts;
 
   return (
     <div className="mx-auto w-full max-w-[1200px] space-y-4 anchor-fade-in">

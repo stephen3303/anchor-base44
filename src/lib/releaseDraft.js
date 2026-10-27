@@ -52,6 +52,7 @@ export const releaseDraft = async ({ draft, authority, actor, settings, now = ne
     released_by_email: actor?.email || '',
     released_by_name: actorName,
     release_authority_designation: designation,
+    release_authority_personnel_id: authority?.personnel_id || '',
     assigned_to_email: '',
     assigned_to_name: '',
     assigned_duty: '',

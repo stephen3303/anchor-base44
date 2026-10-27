@@ -197,6 +197,9 @@
           "duty": {
             "type": "string"
           },
+          "personnel_id": {
+            "type": "string"
+          },
           "assignee_email": {
             "type": "string"
           },
@@ -231,6 +234,9 @@
     "assigned_duty": {
       "type": "string"
     },
+    "assigned_personnel_id": {
+      "type": "string"
+    },
     "routed_to_emails": {
       "type": "array",
       "items": {
@@ -238,6 +244,9 @@
       }
     },
     "release_authority_designation": {
+      "type": "string"
+    },
+    "release_authority_personnel_id": {
       "type": "string"
     },
     "released_at": {

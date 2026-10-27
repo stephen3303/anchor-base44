@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { shortName } from '@/lib/personnel';
+import { ROSTER_STATE, resolveHolder, shortName } from '@/lib/personnel';
 import PersonnelSelect from './PersonnelSelect';
 import SearchableSelect from './SearchableSelect';
 
@@ -35,8 +35,13 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, template
       setError(`${shortName(person)} holds no position on their roster record — set one before designating them.`);
       return;
     }
+    if (person.status === 'detached') {
+      setError(`${shortName(person)} is detached from the command — designate the person who reliefs them.`);
+      return;
+    }
     setError('');
     onAdd({
+      personnel_id: person.id,
       user_email: person.email,
       user_name: shortName(person),
       designation: person.position,
@@ -48,6 +53,9 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, template
     setScope('all');
     setIsCo(false);
   };
+
+  // The designation is only as good as the roster behind it, read as it stands now.
+  const rosterStateOf = (authority) => resolveHolder(authority, personnel).state;
 
   return (
     <section className="rounded-md border border-line bg-white shadow-sm">
@@ -73,6 +81,21 @@ export default function ReleaseAuthorityPanel({ authorities, personnel, template
                   ? a.scope_message_templates.join(', ')
                   : 'all message templates'}
               </p>
+              {rosterStateOf(a) === 'detached' && (
+                <p className={`mt-0.5 text-[11px] font-semibold ${ROSTER_STATE.detached.className}`}>
+                  Detached from the command — nothing can be released under this designation until it is re-held.
+                </p>
+              )}
+              {rosterStateOf(a) === 'leave' && (
+                <p className={`mt-0.5 text-[11px] font-semibold ${ROSTER_STATE.leave.className}`}>
+                  On leave — confirm the covering watchstander before a release.
+                </p>
+              )}
+              {rosterStateOf(a) === 'absent' && (
+                <p className={`mt-0.5 text-[11px] ${ROSTER_STATE.absent.className}`}>
+                  Not on the roster — this designation is checked against the email held here.
+                </p>
+              )}
             </div>
             <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(a)} disabled={busy} className="h-8 px-2" title="Remove designation">
               <Trash2 className="h-4 w-4 text-lifecycle-cancelled" />

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { AlertTriangle, CornerUpLeft, Save, Send, ShieldCheck, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { currentRouteStep, isEditable, releaseAuthorityFor } from '@/lib/drafting';
+import { isEditable, releaseGate } from '@/lib/drafting';
+import { resolveRoute } from '@/lib/personnel';
 import ReturnDialog from './ReturnDialog';
 
 /**
@@ -12,7 +13,9 @@ export default function RouteActionPanel({
   draft,
   authorities,
   user,
+  personnel,
   workflowPreview,
+  stranded,
   busy,
   onSave,
   onSubmit,
@@ -26,8 +29,11 @@ export default function RouteActionPanel({
 
   const editable = isEditable(draft);
   const inRouting = draft?.draft_status === 'in_routing';
-  const step = currentRouteStep(draft);
-  const authority = releaseAuthorityFor(authorities, user?.email);
+  const route = resolveRoute(draft?.routing_steps, personnel);
+  const step = route.find((s) => s.status === 'current') || null;
+  // Who may release is resolved against the roster: the designation on this draft's
+  // template, held by a person who is still with the command.
+  const gate = releaseGate(authorities, user, draft, personnel);
   const isOwner = draft?.created_by_id === user?.id || (user?.email && draft?.created_by === user.email);
   const releaseStep = step?.action === 'release';
 
@@ -48,6 +54,12 @@ export default function RouteActionPanel({
               <p className="mt-0.5 text-[11.5px] text-mutedink">
                 {workflowPreview.steps.map((s) => `${s.title}${s.action === 'release' ? ' (release)' : ''}`).join(' → ')}
               </p>
+              {(stranded || []).length > 0 && (
+                <p className="mt-1.5 rounded-sm border border-lifecycle-cancelled/40 bg-lifecycle-cancelled/10 px-2 py-1 text-[11.5px] leading-snug text-ink">
+                  {stranded[0].title} is held by {stranded[0].assignee_name || 'a person'} who is detached from the
+                  command. An administrator must re-hold that step before this can be submitted.
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex items-start gap-2 rounded-sm border border-precedence-immediate/40 bg-precedence-immediate/10 px-3 py-2.5">
@@ -77,11 +89,15 @@ export default function RouteActionPanel({
           <div className="rounded-sm border border-line bg-secondary/50 px-3 py-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-mutedink">Held by</p>
             <p className="mt-0.5 text-[12.5px] font-semibold text-ink">
-              {step.title} · {step.assignee_name || 'unassigned'}
-              {step.duty ? ` (${step.duty})` : ''}
+              {step.title} · {step.holder_name || 'unassigned'}
+              {step.holder_duty ? ` (${step.holder_duty})` : ''}
             </p>
             <p className="mt-0.5 text-[11.5px] text-mutedink">
-              The text is frozen while in routing. Any change sends it back to the drafter.
+              {step.holder_state === 'detached'
+                ? 'The person holding this step is detached from the command — an administrator must re-hold it before the chain can move.'
+                : `The text is frozen while in routing. Any change sends it back to the drafter.${
+                    step.holder_state === 'leave' ? ' The holder is on leave — a covering watchstander acts.' : ''
+                  }`}
             </p>
           </div>
 
@@ -91,16 +107,20 @@ export default function RouteActionPanel({
                 type="button"
                 size="sm"
                 onClick={onRelease}
-                disabled={busy || !authority}
+                disabled={busy || !gate.ok}
                 className="w-full gap-1.5 text-[12.5px]"
               >
                 <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 Release message
               </Button>
-              {!authority && (
+              {!gate.ok && (
                 <p className="text-[11.5px] leading-snug text-mutedink">
-                  Only the commanding officer or a designated release authority may release. Release authority is
-                  designated in Admin · Routing &amp; Release.
+                  {gate.reason} Release authority is designated from the roster in Admin · Routing &amp; Release.
+                </p>
+              )}
+              {gate.ok && gate.authority?.designation && (
+                <p className="text-[11.5px] leading-snug text-mutedink">
+                  Releasing as {gate.authority.designation}.
                 </p>
               )}
             </div>

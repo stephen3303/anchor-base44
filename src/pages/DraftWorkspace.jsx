@@ -17,7 +17,8 @@ import NtpCheckPanel from '@/components/anchor/drafting/NtpCheckPanel';
 import { buildBodyText, renderMessage } from '@/lib/ntp';
 import { loadCommandSettings } from '@/lib/commandSettings';
 import { errorsOf, validateDraft } from '@/lib/ntpValidate';
-import { buildRoute, currentRouteStep, isEditable, releaseAuthorityFor, routeEmails, selectWorkflow } from '@/lib/drafting';
+import { buildRoute, currentRouteStep, editableFields, isEditable, releaseGate, routeEmails, selectWorkflow } from '@/lib/drafting';
+import { detachedSteps } from '@/lib/personnel';
 import { releaseDraft } from '@/lib/releaseDraft';
 import { enqueue, readQueue } from '@/lib/syncQueue';
 import { SAMPLE_MESSAGES, formatZulu } from '@/data/anchorSampleData';
@@ -44,20 +45,24 @@ export default function DraftWorkspace() {
   const [authorities, setAuthorities] = useState([]);
   const [settings, setSettings] = useState(null);
   const [user, setUser] = useState(null);
+  const [personnel, setPersonnel] = useState([]);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveState, setSaveState] = useState('saved');
+  const [savedAt, setSavedAt] = useState('');
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const [record, wf, auth, me, command] = await Promise.all([
+        const [record, wf, auth, me, command, roster] = await Promise.all([
           base44.entities.DraftMessage.get(id),
           base44.entities.RoutingWorkflow.list(),
           base44.entities.ReleaseAuthority.list(),
           base44.auth.me(),
           loadCommandSettings(),
+          base44.entities.Personnel.list({ sort: 'last_name', limit: 200 }),
         ]);
         if (!alive) return;
         setDraft(record);
@@ -65,6 +70,7 @@ export default function DraftWorkspace() {
         setAuthorities(auth || []);
         setUser(me);
         setSettings(command);
+        setPersonnel(roster?.items || []);
       } catch (error) {
         if (alive) setMissing(true);
       } finally {
@@ -76,14 +82,41 @@ export default function DraftWorkspace() {
     };
   }, [id]);
 
-  const patch = (fields) => setDraft((prev) => ({ ...prev, ...fields }));
+  // Editing is written to the draft record itself: every field the drafter can change,
+  // and the rendered body, goes to the database a moment after the typing stops.
+  const patch = (fields) => {
+    setDraft((prev) => ({ ...prev, ...fields }));
+    setSaveState('dirty');
+  };
 
   const persist = async (fields) => {
     const next = { ...draft, ...fields };
     await base44.entities.DraftMessage.update(id, { ...fields, body_text: buildBodyText(next) });
     setDraft(next);
+    setSaveState('saved');
     return next;
   };
+
+  const saveEditable = async () => {
+    if (!draft || !isEditable(draft)) return;
+    setSaveState('saving');
+    await base44.entities.DraftMessage.update(id, {
+      ...editableFields(draft),
+      body_text: buildBodyText(draft),
+    });
+    setSaveState('saved');
+    setSavedAt(formatZulu(new Date().toISOString()));
+  };
+
+  useEffect(() => {
+    if (saveState !== 'dirty' || busy || !draft || !isEditable(draft)) return undefined;
+    const timer = setTimeout(() => {
+      // A failed write is reported, not retried on a loop: the next edit tries again.
+      saveEditable().catch(() => setSaveState('error'));
+    }, 1200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, saveState, busy]);
 
   const logEvent = (payload, routedTo) =>
     base44.entities.RoutingEvent.create({
@@ -99,7 +132,7 @@ export default function DraftWorkspace() {
   const save = async () => {
     setBusy(true);
     try {
-      await persist({});
+      await saveEditable();
       toast({ title: 'Draft saved', description: 'The text and routing data are stored on the draft.' });
     } finally {
       setBusy(false);
@@ -127,9 +160,20 @@ export default function DraftWorkspace() {
       return;
     }
 
+    // A chain step held by someone detached from the command cannot be worked: the
+    // route is refused rather than submitted to a person who is no longer here.
+    const route = buildRoute(workflow, personnel);
+    const stranded = detachedSteps(route, personnel);
+    if (stranded.length) {
+      toast({
+        title: 'A routing step is held by someone detached',
+        description: `${stranded[0].title}: ${stranded[0].assignee_name || 'the recorded holder'} is detached from the command. An administrator must re-hold that step in Admin · Routing & Release.`,
+      });
+      return;
+    }
+
     setBusy(true);
     try {
-      const route = buildRoute(workflow);
       const routedTo = [...new Set([...routeEmails(route), draft.created_by].filter(Boolean))];
       const fields = {
         rendered_text: renderMessage(draft, settings),
@@ -141,6 +185,7 @@ export default function DraftWorkspace() {
         assigned_to_email: route[0].assignee_email,
         assigned_to_name: route[0].assignee_name,
         assigned_duty: route[0].duty,
+        assigned_personnel_id: route[0].personnel_id || '',
         routed_to_emails: routedTo,
         return_comment: '',
       };
@@ -172,6 +217,13 @@ export default function DraftWorkspace() {
       toast({ title: 'No further step', description: 'This chain has no step after the current one.' });
       return;
     }
+    if (detachedSteps([step], personnel).length) {
+      toast({
+        title: 'This step is not held',
+        description: `${step.title}: the person recorded is detached from the command. An administrator must re-hold the step before the chain can move.`,
+      });
+      return;
+    }
     setBusy(true);
     try {
       const now = new Date().toISOString();
@@ -186,6 +238,7 @@ export default function DraftWorkspace() {
         assigned_to_email: next.assignee_email,
         assigned_to_name: next.assignee_name,
         assigned_duty: next.duty,
+        assigned_personnel_id: next.personnel_id || '',
       });
       await logEvent({
         event_type: 'advanced',
@@ -203,18 +256,18 @@ export default function DraftWorkspace() {
 
   const release = async () => {
     const step = currentRouteStep(draft);
-    const authority = releaseAuthorityFor(authorities, user?.email);
     if (!step || step.action !== 'release') {
       toast({ title: 'Not at the release step', description: 'The chain has not reached the release authority yet.' });
       return;
     }
-    if (!authority) {
-      toast({
-        title: 'Release authority required',
-        description: 'Only the commanding officer or a designated release authority may release this message.',
-      });
+    // Release is checked against the roster: the designation must cover this draft's
+    // template, and the person holding it must still be with the command.
+    const gate = releaseGate(authorities, user, draft, personnel);
+    if (!gate.ok) {
+      toast({ title: 'Release authority required', description: gate.reason });
       return;
     }
+    const { authority } = gate;
     if (blockOnErrors()) return;
 
     // Offline mode does not stop the release. The work continues and the transmission
@@ -340,8 +393,9 @@ export default function DraftWorkspace() {
   const hasRoute = (draft.routing_steps || []).length > 0;
   const preview = editable ? selectWorkflow(workflows, draft) : null;
   const workflowPreview = preview
-    ? { name: preview.name, steps: buildRoute(preview) }
+    ? { name: preview.name, steps: buildRoute(preview, personnel) }
     : null;
+  const previewStranded = workflowPreview ? detachedSteps(workflowPreview.steps, personnel) : [];
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-4 anchor-fade-in">
@@ -356,6 +410,27 @@ export default function DraftWorkspace() {
           <span className="anchor-mono text-[10.5px] text-mutedink">{draft.message_type || 'DRAFT'}</span>
           {draft.dtg && <span className="anchor-mono text-[10.5px] text-mutedink">· {draft.dtg}</span>}
           {draft.template_name && <span className="text-[10.5px] text-mutedink">· from {draft.template_name}</span>}
+          {editable && (
+            <span
+              className={
+                saveState === 'saved'
+                  ? 'anchor-mono ml-auto text-[10.5px] text-lifecycle-active'
+                  : saveState === 'error'
+                    ? 'anchor-mono ml-auto text-[10.5px] font-semibold text-lifecycle-cancelled'
+                    : 'anchor-mono ml-auto text-[10.5px] text-mutedink'
+              }
+            >
+              {saveState === 'saving'
+                ? 'Saving to the draft record…'
+                : saveState === 'dirty'
+                  ? 'Unsaved changes'
+                  : saveState === 'error'
+                    ? 'Not saved — press Save draft'
+                    : savedAt
+                      ? `Saved ${savedAt}`
+                      : 'Saved on the draft record'}
+            </span>
+          )}
         </div>
         <h1 className="mt-2 font-heading text-[22px] font-semibold leading-tight tracking-tight text-ink sm:text-[25px]">
           {draft.subject || 'Untitled draft'}
@@ -422,7 +497,9 @@ export default function DraftWorkspace() {
               draft={draft}
               authorities={authorities}
               user={user}
+              personnel={personnel}
               workflowPreview={workflowPreview}
+              stranded={previewStranded}
               busy={busy}
               onSave={save}
               onSubmit={submit}
@@ -439,8 +516,8 @@ export default function DraftWorkspace() {
           </Panel>
 
           {hasRoute && (
-            <Panel title="Routing chain">
-              <RoutingTimeline draft={draft} />
+            <Panel title="Routing chain" hint="Each step is held by a person on the roster, read live.">
+              <RoutingTimeline draft={draft} personnel={personnel} />
             </Panel>
           )}
         </div>
