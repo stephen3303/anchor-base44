@@ -99,12 +99,10 @@ export default function Messages() {
       target_reference: message.reference,
       detail: `${message.precedence} traffic opened from the inbox`,
     });
-    // Below the xl breakpoint the record opens under the list, so bring it into view.
-    if (!window.matchMedia('(min-width: 1280px)').matches) {
-      window.setTimeout(() => {
-        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
-    }
+    // The record opens beside the list on wide screens and under it below xl: bring it into view either way.
+    window.setTimeout(() => {
+      previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
   };
 
   const toggleStar = async (id) => {
