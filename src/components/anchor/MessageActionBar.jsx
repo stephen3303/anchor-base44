@@ -51,12 +51,10 @@ export default function MessageActionBar({ message }) {
         <CornerUpLeft className="h-3.5 w-3.5" aria-hidden="true" />
         Draft response
       </button>
-      {me?.role === 'admin' && (
-        <button type="button" onClick={() => setTemplateOpen(true)} disabled={busy} className={PILL}>
-          <LayoutTemplate className="h-3.5 w-3.5" aria-hidden="true" />
-          Create template
-        </button>
-      )}
+      <button type="button" onClick={() => setTemplateOpen(true)} disabled={busy} className={PILL}>
+        <LayoutTemplate className="h-3.5 w-3.5" aria-hidden="true" />
+        Create template
+      </button>
       <CreateTemplateDialog open={templateOpen} onOpenChange={setTemplateOpen} message={message} />
     </div>
   );

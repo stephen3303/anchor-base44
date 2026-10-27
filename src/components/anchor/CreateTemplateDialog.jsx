@@ -83,7 +83,7 @@ export default function CreateTemplateDialog({ open, onOpenChange, message }) {
     } catch (error) {
       toast({
         title: 'Could not create the template',
-        description: 'Only an administrator may publish a template.',
+        description: 'The template was not created. Try again.',
       });
     } finally {
       setBusy(false);

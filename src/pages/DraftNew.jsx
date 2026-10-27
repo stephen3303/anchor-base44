@@ -159,7 +159,7 @@ export default function DraftNew() {
           <SourceMessageActions
             message={selected}
             busy={busy}
-            canTemplate={isAdmin}
+            canTemplate={!!user}
             onResponse={fromResponse}
             onDerive={fromMessage}
           />
