@@ -8,7 +8,6 @@ import ReportedEffects from '@/components/anchor/topology/ReportedEffects';
 import useConnectivity from '@/hooks/useConnectivity';
 import useTopology from '@/hooks/useTopology';
 import { useAuth } from '@/lib/AuthContext';
-import { recordAudit } from '@/lib/audit';
 import { c2oix, localServer } from '@/lib/simulator';
 import { CIRCUIT_KEY, deriveTopology } from '@/lib/topology';
 import { useToast } from '@/components/ui/use-toast';
@@ -54,29 +53,24 @@ export default function NetworkTopology() {
   const dropMessages = async (count, key) => {
     setWorking(key);
     try {
+      // The simulator records the drop in the audit chain itself.
       const result = await c2oix('drop', { count });
       if (!result || result.error) throw new Error(result?.error || 'No answer');
       const plural = (n) => `${n} ${n === 1 ? 'message' : 'messages'}`;
-      await recordAudit({
-        action: 'traffic_released',
-        target_type: 'simulator',
-        target_reference: 'C2OIX server',
-        detail:
-          result.circuit === 'up'
-            ? `C2OIX forced to send ${plural(result.released)}: ${result.handed} handed to the ANCHOR server${
-                result.held ? `, ${result.held} held at C2OIX` : ''
-              }.`
-            : `C2OIX forced to release ${plural(result.released)} with the circuit down: held at C2OIX, not transmitted.`,
-      });
+      const notes = [
+        result.circuit === 'up'
+          ? `${result.handed} reached the ANCHOR server${result.held ? `; ${result.held} could not and wait at C2OIX` : ''}.`
+          : 'The circuit is down, so they wait at C2OIX and have not been transmitted.',
+        result.feed_stopped ? 'The automatic feed is stopped while you drive the queue by hand.' : '',
+        result.audited === false ? 'The audit entry could not be written.' : '',
+      ];
       toast({
         title: result.released ? `C2OIX dropped ${plural(result.released)}` : 'Nothing to drop',
-        description:
-          result.circuit === 'up'
-            ? `${result.handed} reached the ANCHOR server${result.held ? `; ${result.held} could not and wait at C2OIX` : ''}.`
-            : 'The circuit is down, so they wait at C2OIX and have not been transmitted.',
+        description: notes.filter(Boolean).join(' '),
       });
     } catch (error) {
-      toast({ title: 'C2OIX did not drop', description: 'The simulator did not answer. Try again.' });
+      const reason = error?.response?.data?.error;
+      toast({ title: 'C2OIX did not drop', description: reason || 'The simulator did not answer. Try again.' });
     } finally {
       setWorking('');
       await load();
@@ -86,7 +80,7 @@ export default function NetworkTopology() {
   const setFeed = async (activeFeed) => {
     setWorking('feed');
     try {
-      await c2oix('feed', { active: activeFeed });
+      await c2oix('feed', { active: activeFeed, audit: true });
       toast({
         title: activeFeed ? 'Automatic feed started' : 'Automatic feed stopped',
         description: activeFeed ? 'C2OIX sends on its own schedule as well.' : 'Only the drop buttons move traffic now.',
@@ -103,7 +97,7 @@ export default function NetworkTopology() {
     const feedWasActive = Boolean(servers.c2oix?.feed_active);
     setWorking('reload');
     try {
-      await c2oix('seed', { force: true });
+      await c2oix('seed', { force: true, audit: true });
       // Loading the repository starts the feed; leave it as the operator had it.
       if (!feedWasActive) await c2oix('feed', { active: false });
       toast({ title: 'Example traffic reloaded', description: 'Every message is back in the C2OIX queue.' });
@@ -125,14 +119,24 @@ export default function NetworkTopology() {
           ? 'Circuit restored from the network topology demonstration.'
           : 'Circuit broken from the network topology demonstration.',
       );
-      if (drivesSimulators) {
-        await localServer(up ? 'connect' : 'disconnect', {
-          note: 'Reported from the network topology demonstration.',
+      const result = drivesSimulators
+        ? await localServer(up ? 'connect' : 'disconnect', {
+            note: 'Reported from the network topology demonstration.',
+          })
+        : null;
+      if (up && result && (result.ok === false || result.backlog?.error)) {
+        toast({
+          title: 'Circuit reported up, but C2OIX did not answer',
+          description: 'Messages released while it was down still wait at C2OIX. Restore the circuit again.',
         });
+        return;
       }
+      const caught = up ? result?.backlog?.ingested || 0 : 0;
       toast({
         title: up ? 'Circuit reported up' : 'Circuit reported down',
-        description: up ? 'Transmission resumed.' : 'Offline mode: work continues, transmission is held.',
+        description: up
+          ? `Transmission resumed.${caught ? ` ${caught} waiting ${caught === 1 ? 'message' : 'messages'} reached the ANCHOR server.` : ''}`
+          : 'Offline mode: work continues, transmission is held.',
       });
     } catch (error) {
       toast({ title: 'Could not report the circuit', description: 'The command server did not answer. Try again.' });
