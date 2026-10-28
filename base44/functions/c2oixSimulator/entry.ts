@@ -4,6 +4,7 @@ import {
   LOCAL,
   LOCAL_FUNCTION,
   SIM_TRAFFIC,
+  AUDIT_FUNCTION,
   callPeer,
   circuitDown,
   clip,
@@ -96,7 +97,29 @@ const feed = async (base44, body) => {
     feed_active: active,
     note: active ? "Feed started" : "Feed stopped",
   });
+  if (body?.audit) {
+    await audit(base44, active ? "C2OIX automatic feed started." : "C2OIX automatic feed stopped; traffic moves only when an operator drops it.");
+  }
   return { ok: true, server: row };
+};
+
+/**
+ * Record an operator's hand on the simulator in the audit chain. Written here, on
+ * the server, so the action cannot happen without its record; a failed write is
+ * reported back rather than undoing what was done.
+ */
+const audit = async (base44, detail) => {
+  try {
+    await callPeer(base44, AUDIT_FUNCTION, {
+      action: "traffic_released",
+      target_type: "simulator",
+      target_reference: "C2OIX server",
+      detail,
+    });
+    return true;
+  } catch (error) {
+    return false;
+  }
 };
 
 /** Give every unscheduled message an arrival time, spread over random intervals. */
@@ -129,15 +152,22 @@ const tickExternal = async (base44) => {
     { status: "queued", scheduled_for: { $lte: nowIso() } },
     { sort: "scheduled_for", limit: MAX_PER_TICK + 4 },
   );
-  const due = (items || []).filter((message) => message.scheduled_for).slice(0, MAX_PER_TICK);
-  const peer = await serverRow(base44, LOCAL);
-  const peerDown = !peer || peer.online === false;
+  // Judged the same way as a drop, so the feed never sends while the command reports the circuit down.
+  const down = await circuitDown(base44);
+  // With the circuit up, anything still waiting here goes before new traffic.
+  const { items: waiting } = down
+    ? { items: [] }
+    : await base44.asServiceRole.entities.SimMessage.filter({ status: "deferred" }, { sort: "sequence", limit: MAX_PER_TICK });
+  const due = (waiting || []).length
+    ? waiting.slice(0, MAX_PER_TICK)
+    : (items || []).filter((message) => message.scheduled_for).slice(0, MAX_PER_TICK);
   let handed = 0;
   let deferred = 0;
 
   for (const message of due) {
-    if (await handOver(base44, message, peerDown, "Local server not reachable — held at C2OIX")) handed += 1;
-    else deferred += 1;
+    const outcome = await handOver(base44, message, down, "Local server not reachable — held at C2OIX");
+    if (outcome === "handed") handed += 1;
+    if (outcome === "held") deferred += 1;
   }
 
   return { ...beat, scheduled, handed, deferred, due: due.length, counts: await messageCounts(base44) };
@@ -145,9 +175,14 @@ const tickExternal = async (base44) => {
 
 /**
  * Hand one message to the local server, or hold it here as deferred when the local
- * server cannot take it. Returns whether it left C2OIX.
+ * server cannot take it. The message is read again first: if a drop and the feed
+ * both picked it, the second one finds it gone and leaves it alone.
+ * Returns "handed", "held" or "skipped".
  */
-const handOver = async (base44, message, peerDown, heldReason) => {
+const handOver = async (base44, picked, peerDown, heldReason) => {
+  const { items: fresh } = await base44.asServiceRole.entities.SimMessage.filter({ id: picked.id }, { limit: 1 });
+  const message = (fresh || [])[0];
+  if (!message || message.status !== picked.status) return "skipped";
   const attempts = (message.attempts || 0) + 1;
   const at = nowIso();
   if (peerDown) {
@@ -157,7 +192,7 @@ const handOver = async (base44, message, peerDown, heldReason) => {
       attempted_at: at,
       last_error: heldReason,
     });
-    return false;
+    return "held";
   }
   try {
     await callPeer(base44, LOCAL_FUNCTION, { action: "receive", message_id: message.id });
@@ -168,7 +203,7 @@ const handOver = async (base44, message, peerDown, heldReason) => {
       dispatched_at: at,
       last_error: "",
     });
-    return true;
+    return "handed";
   } catch (error) {
     await base44.asServiceRole.entities.SimMessage.update(message.id, {
       status: "deferred",
@@ -176,7 +211,7 @@ const handOver = async (base44, message, peerDown, heldReason) => {
       attempted_at: at,
       last_error: clip(String(error?.message || error), 200),
     });
-    return false;
+    return "held";
   }
 };
 
@@ -187,9 +222,18 @@ const handOver = async (base44, message, peerDown, heldReason) => {
  * With the circuit down, the next queued messages are released but cannot leave:
  * they are held here as deferred, waiting for the circuit, and go when the local
  * server reconnects and asks for the backlog.
+ *
+ * Driving the queue by hand stops the automatic feed, so nothing moves between
+ * the operator's clicks.
  */
 const drop = async (base44, body) => {
-  const count = Math.max(1, Math.min(MAX_PER_DROP, Math.floor(Number(body?.count) || 1)));
+  const count = Number(body?.count);
+  if (!Number.isInteger(count) || count < 1 || count > MAX_PER_DROP) {
+    return { error: `Drop between 1 and ${MAX_PER_DROP} messages` };
+  }
+  const row = await ensureServer(base44, SERVER);
+  const feedStopped = row.feed_active !== false;
+  if (feedStopped) await patchServer(base44, SERVER, { feed_active: false, note: "Feed stopped — driven by hand" });
   const down = await circuitDown(base44);
   const { items } = await base44.asServiceRole.entities.SimMessage.filter(
     { status: { $in: down ? ["queued"] : ["deferred", "queued"] } },
@@ -202,18 +246,35 @@ const drop = async (base44, body) => {
 
   let handed = 0;
   let held = 0;
+  const refs = [];
   for (const message of next) {
-    if (await handOver(base44, message, down, "Circuit down — released and held at C2OIX")) handed += 1;
+    const outcome = await handOver(base44, message, down, "Circuit down — released and held at C2OIX");
+    if (outcome === "skipped") continue;
+    refs.push(message.reference);
+    if (outcome === "handed") handed += 1;
     else held += 1;
   }
+  const released = handed + held;
+  const plural = (n) => `${n} ${n === 1 ? "message" : "messages"}`;
+
+  const audited = await audit(
+    base44,
+    !released
+      ? "Drop requested; nothing left in the C2OIX queue."
+      : down
+        ? `C2OIX forced to release ${plural(released)} (${refs.join(", ")}) with the circuit down; held at C2OIX, not transmitted.`
+        : `C2OIX forced to send ${plural(released)} (${refs.join(", ")}): ${handed} handed to the ANCHOR server${held ? `, ${held} held at C2OIX` : ""}.`,
+  );
 
   return {
     ok: true,
     requested: count,
-    released: next.length,
+    released,
     handed,
     held,
     circuit: down ? "down" : "up",
+    feed_stopped: feedStopped,
+    audited,
     counts: await messageCounts(base44),
     at: nowIso(),
   };
@@ -271,10 +332,19 @@ export default async function (req) {
 
     if (action === "status") return Response.json(await reportExternalStatus(base44));
     if (action === "heartbeat") return Response.json(await beatExternal(base44));
-    if (action === "seed") return Response.json(await seed(base44, body));
+    if (action === "seed") {
+      const result = await seed(base44, body);
+      if (body?.audit && result.seeded) {
+        await audit(base44, `Example traffic reloaded: ${result.seeded} messages queued at C2OIX.`);
+      }
+      return Response.json(result);
+    }
     if (action === "feed") return Response.json(await feed(base44, body));
     if (action === "tick") return Response.json(await tickExternal(base44));
-    if (action === "drop") return Response.json(await drop(base44, body));
+    if (action === "drop") {
+      const result = await drop(base44, body);
+      return Response.json(result, { status: result.error ? 400 : 200 });
+    }
     if (action === "backlog") return Response.json(await backlog(base44));
     if (action === "reset") return Response.json(await clearRepository(base44));
 
