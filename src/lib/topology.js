@@ -59,11 +59,62 @@ export const loadWorkstationLinks = async () => {
   return settled.items || [];
 };
 
-/** Everything the diagram draws, derived from the link rows and the two servers. */
-export const deriveTopology = ({ rows, servers, external, circuit }) => {
+const bySequence = (a, b) => (a.sequence || 0) - (b.sequence || 0);
+const latest = (list, key) => list.reduce((best, item) => (!best || key(item) > key(best) ? item : best), null);
+const order = (message) => String(message.sequence || 0).padStart(5, '0');
+
+const shown = (label, message, at, empty) =>
+  message
+    ? { label, reference: message.reference, subject: message.subject, precedence: message.precedence, at }
+    : { label, empty };
+
+/**
+ * Where the simulated traffic is. A message that has not left C2OIX has not been
+ * transmitted: it is either still queued there, or released while the circuit was
+ * down and waiting there for it. The local server holds what it has ingested, and
+ * each workstation holds what the local server has handed it.
+ */
+export const deriveTraffic = (messages, circuitUp) => {
+  const all = messages || [];
+  const queued = all.filter((message) => message.status === 'queued').sort(bySequence);
+  const waiting = all.filter((message) => message.status === 'deferred').sort(bySequence);
+  const ingested = all.filter((message) => message.status === 'ingested');
+  // The message the next drop sends: what is waiting goes first once the circuit is up.
+  const next = circuitUp ? waiting[0] || queued[0] || null : queued[0] || null;
+
+  const stations = Object.fromEntries(
+    WORKSTATION_LINKS.map((link) => {
+      const delivered = ingested.filter((message) => message.deliveries?.[link.to]);
+      return [
+        link.to,
+        {
+          count: delivered.length,
+          owed: ingested.length - delivered.length,
+          last: latest(delivered, (message) => `${message.deliveries[link.to]}|${message.ingested_at || ''}|${order(message)}`),
+        },
+      ];
+    }),
+  );
+
+  return {
+    queued,
+    waiting,
+    ingested,
+    next,
+    atC2oix: queued.length + waiting.length,
+    lastIngested: latest(ingested, (message) => `${message.ingested_at || ''}|${order(message)}`),
+    stations,
+    total: all.length,
+  };
+};
+
+/** Everything the diagram draws, derived from the link rows, the two servers and the traffic. */
+export const deriveTopology = ({ rows, servers, external, circuit, messages }) => {
   const circuitUp = external === 'up';
   const c2oix = servers.c2oix;
   const anchor = servers.local;
+  const traffic = deriveTraffic(messages, circuitUp);
+  const owedTotal = Object.values(traffic.stations).reduce((sum, station) => sum + station.owed, 0);
 
   const links = WORKSTATION_LINKS.map((link) => {
     const row = (rows || []).find((item) => item.link_key === link.key);
@@ -83,7 +134,18 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
       ...nodeByKey('c2oix'),
       status: circuitUp ? 'up' : 'down',
       statusLabel: circuitUp ? 'Reachable' : 'Unreachable',
-      statusNote: circuitUp ? '' : 'The circuit is down, so nothing at this command can reach the C2OIX server.',
+      statusNote: circuitUp
+        ? ''
+        : traffic.waiting.length
+          ? `The circuit is down. ${traffic.waiting.length} released ${traffic.waiting.length === 1 ? 'message is' : 'messages are'} waiting here and ${traffic.waiting.length === 1 ? 'has' : 'have'} not been transmitted.`
+          : 'The circuit is down, so nothing at this command can reach the C2OIX server.',
+      count: {
+        label: 'Messages at C2OIX',
+        value: traffic.atC2oix,
+        note: `${traffic.queued.length} queued · ${traffic.waiting.length} waiting for the circuit`,
+        tone: traffic.waiting.length ? 'attention' : 'plain',
+      },
+      message: shown('Next in queue', traffic.next, '', traffic.atC2oix ? 'Waiting for the circuit' : 'Queue empty'),
       facts: [
         { label: 'Feed', value: c2oix?.feed_active ? 'running' : 'stopped' },
         { label: 'Last beat', value: c2oix?.last_beat_at ? formatZulu(c2oix.last_beat_at) : 'none' },
@@ -95,16 +157,28 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
       status: 'up',
       statusLabel: 'Online',
       statusNote: '',
+      count: {
+        label: 'Messages at ANCHOR',
+        value: traffic.ingested.length,
+        note: owedTotal ? `${owedTotal} held for cut-off workstations` : 'All handed on',
+        tone: owedTotal ? 'attention' : 'plain',
+      },
+      message: shown(
+        'Last received',
+        traffic.lastIngested,
+        traffic.lastIngested?.ingested_at ? formatZulu(traffic.lastIngested.ingested_at) : '',
+        'Nothing received yet',
+      ),
       facts: [
         { label: 'Circuit', value: circuitUp ? 'up' : 'down' },
         { label: 'Workstations reachable', value: `${reachable} of ${links.length}` },
         { label: 'Beats', value: anchor?.beats || 0 },
-        { label: 'Messages received', value: anchor?.received || 0 },
       ],
     },
   };
 
   links.forEach((link) => {
+    const station = traffic.stations[link.to];
     nodes[link.to] = {
       ...nodeByKey(link.to),
       status: link.state === 'up' ? 'up' : link.state === 'unknown' ? 'unknown' : 'down',
@@ -113,6 +187,18 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
         link.state === 'down'
           ? 'This workstation cannot reach the ANCHOR server: it shows the server-unavailable banner and holds its work locally.'
           : '',
+      count: {
+        label: 'Messages here',
+        value: station.count,
+        note: station.owed ? `${station.owed} waiting at ANCHOR` : 'Up to date',
+        tone: station.owed ? 'attention' : 'plain',
+      },
+      message: shown(
+        'Last received',
+        station.last,
+        station.last ? formatZulu(station.last.deliveries[link.to]) : '',
+        'Nothing received yet',
+      ),
       facts: [
         { label: 'Reaches ANCHOR', value: link.state === 'up' ? 'yes' : 'no' },
         { label: 'State reported', value: link.reportedAt || '—' },
@@ -122,6 +208,7 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
 
   return {
     nodes,
+    traffic,
     links,
     down,
     reachable,
