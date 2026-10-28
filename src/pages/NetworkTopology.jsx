@@ -69,7 +69,7 @@ export default function NetworkTopology() {
         description: notes.filter(Boolean).join(' '),
       });
     } catch (error) {
-      const reason = error?.response?.data?.error;
+      const reason = error?.data?.error || error?.response?.data?.error;
       toast({ title: 'C2OIX did not drop', description: reason || 'The simulator did not answer. Try again.' });
     } finally {
       setWorking('');
@@ -124,10 +124,17 @@ export default function NetworkTopology() {
             note: 'Reported from the network topology demonstration.',
           })
         : null;
-      if (up && result && (result.ok === false || result.backlog?.error)) {
+      if (up && result?.ok === false) {
         toast({
           title: 'Circuit reported up, but C2OIX did not answer',
           description: 'Messages released while it was down still wait at C2OIX. Restore the circuit again.',
+        });
+        return;
+      }
+      if (up && result?.backlog?.error) {
+        toast({
+          title: 'Circuit up, backlog not yet taken',
+          description: 'Messages released while it was down still wait at C2OIX. They go with the next drop or feed tick.',
         });
         return;
       }
