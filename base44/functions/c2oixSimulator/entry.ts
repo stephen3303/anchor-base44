@@ -5,6 +5,7 @@ import {
   LOCAL_FUNCTION,
   SIM_TRAFFIC,
   callPeer,
+  circuitDown,
   clip,
   ensureServer,
   messageCounts,
@@ -23,12 +24,14 @@ import {
  * it is held here as deferred, and handed over when the local server asks for the
  * backlog on reconnect.
  *
- * Actions: status, heartbeat, seed, feed, tick, backlog, receive, reset.
+ * Actions: status, heartbeat, seed, feed, tick, drop, backlog, receive, reset.
  */
 
 const SERVER = C2OIX;
 /** One handover per tick, so arrivals trickle in rather than arrive in a block. */
 const MAX_PER_TICK = 1;
+/** The most an operator can force out in one press. */
+const MAX_PER_DROP = 10;
 
 const nextDue = async (base44) => {
   const { items } = await base44.asServiceRole.entities.SimMessage.filter(
@@ -128,44 +131,92 @@ const tickExternal = async (base44) => {
   );
   const due = (items || []).filter((message) => message.scheduled_for).slice(0, MAX_PER_TICK);
   const peer = await serverRow(base44, LOCAL);
-  const at = nowIso();
+  const peerDown = !peer || peer.online === false;
   let handed = 0;
   let deferred = 0;
 
   for (const message of due) {
-    const attempts = (message.attempts || 0) + 1;
-    if (!peer || peer.online === false) {
-      await base44.asServiceRole.entities.SimMessage.update(message.id, {
-        status: "deferred",
-        attempts,
-        attempted_at: at,
-        last_error: "Local server not reachable — held at C2OIX",
-      });
-      deferred += 1;
-      continue;
-    }
-    try {
-      await callPeer(base44, LOCAL_FUNCTION, { action: "receive", message_id: message.id });
-      // The local server has recorded it as ingested; this only notes the handover.
-      await base44.asServiceRole.entities.SimMessage.update(message.id, {
-        attempts,
-        attempted_at: at,
-        dispatched_at: at,
-        last_error: "",
-      });
-      handed += 1;
-    } catch (error) {
-      await base44.asServiceRole.entities.SimMessage.update(message.id, {
-        status: "deferred",
-        attempts,
-        attempted_at: at,
-        last_error: clip(String(error?.message || error), 200),
-      });
-      deferred += 1;
-    }
+    if (await handOver(base44, message, peerDown, "Local server not reachable — held at C2OIX")) handed += 1;
+    else deferred += 1;
   }
 
   return { ...beat, scheduled, handed, deferred, due: due.length, counts: await messageCounts(base44) };
+};
+
+/**
+ * Hand one message to the local server, or hold it here as deferred when the local
+ * server cannot take it. Returns whether it left C2OIX.
+ */
+const handOver = async (base44, message, peerDown, heldReason) => {
+  const attempts = (message.attempts || 0) + 1;
+  const at = nowIso();
+  if (peerDown) {
+    await base44.asServiceRole.entities.SimMessage.update(message.id, {
+      status: "deferred",
+      attempts,
+      attempted_at: at,
+      last_error: heldReason,
+    });
+    return false;
+  }
+  try {
+    await callPeer(base44, LOCAL_FUNCTION, { action: "receive", message_id: message.id });
+    // The local server has recorded it as ingested; this only notes the handover.
+    await base44.asServiceRole.entities.SimMessage.update(message.id, {
+      attempts,
+      attempted_at: at,
+      dispatched_at: at,
+      last_error: "",
+    });
+    return true;
+  } catch (error) {
+    await base44.asServiceRole.entities.SimMessage.update(message.id, {
+      status: "deferred",
+      attempts,
+      attempted_at: at,
+      last_error: clip(String(error?.message || error), 200),
+    });
+    return false;
+  }
+};
+
+/**
+ * The operator forcing C2OIX to send the next messages now, whatever their schedule.
+ *
+ * With the circuit up, what is waiting here goes first, then the queue in order.
+ * With the circuit down, the next queued messages are released but cannot leave:
+ * they are held here as deferred, waiting for the circuit, and go when the local
+ * server reconnects and asks for the backlog.
+ */
+const drop = async (base44, body) => {
+  const count = Math.max(1, Math.min(MAX_PER_DROP, Math.floor(Number(body?.count) || 1)));
+  const down = await circuitDown(base44);
+  const { items } = await base44.asServiceRole.entities.SimMessage.filter(
+    { status: { $in: down ? ["queued"] : ["deferred", "queued"] } },
+    { sort: "sequence", limit: 100 },
+  );
+  const rank = (message) => (message.status === "deferred" ? 0 : 1);
+  const next = (items || [])
+    .sort((a, b) => rank(a) - rank(b) || (a.sequence || 0) - (b.sequence || 0))
+    .slice(0, count);
+
+  let handed = 0;
+  let held = 0;
+  for (const message of next) {
+    if (await handOver(base44, message, down, "Circuit down — released and held at C2OIX")) handed += 1;
+    else held += 1;
+  }
+
+  return {
+    ok: true,
+    requested: count,
+    released: next.length,
+    handed,
+    held,
+    circuit: down ? "down" : "up",
+    counts: await messageCounts(base44),
+    at: nowIso(),
+  };
 };
 
 /** Everything held while the local server was away. */
@@ -223,6 +274,7 @@ export default async function (req) {
     if (action === "seed") return Response.json(await seed(base44, body));
     if (action === "feed") return Response.json(await feed(base44, body));
     if (action === "tick") return Response.json(await tickExternal(base44));
+    if (action === "drop") return Response.json(await drop(base44, body));
     if (action === "backlog") return Response.json(await backlog(base44));
     if (action === "reset") return Response.json(await clearRepository(base44));
 
