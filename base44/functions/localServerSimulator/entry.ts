@@ -4,6 +4,7 @@ import {
   LOCAL,
   callPeer,
   clip,
+  deliverToWorkstations,
   ensureServer,
   nowIso,
   patchServer,
@@ -15,9 +16,11 @@ import {
  * It heartbeats the external C2OIX server, ingests what is handed to it, and holds
  * every released message that has to leave the command until the circuit is back.
  * On reconnect it asks the external server for the whole deferred backlog, ingests
- * it, and then starts pushing the held releases for transmit.
+ * it, and then starts pushing the held releases for transmit. Whatever it ingests it
+ * hands on to each workstation whose link is up; a workstation that is cut off is
+ * caught up when its link is restored.
  *
- * Actions: status, heartbeat, connect, disconnect, tick, receive, drain, reset.
+ * Actions: status, heartbeat, connect, disconnect, tick, receive, deliver, drain, reset.
  */
 
 const SERVER = LOCAL;
@@ -74,6 +77,7 @@ const ingest = async (base44, ids) => {
   }));
   if (!patches.length) return 0;
   await base44.asServiceRole.entities.SimMessage.bulkUpdate(patches);
+  await deliverToWorkstations(base44);
   return patches.length;
 };
 
@@ -192,9 +196,10 @@ const disconnectLink = async (base44, body, user) => {
 const tickLocal = async (base44) => {
   const beat = await beatLink(base44);
   const queued = await queueReleased(base44);
-  if (!beat.online) return { ...beat, queued, pushed: 0, held: true };
+  const delivered = await deliverToWorkstations(base44);
+  if (!beat.online) return { ...beat, queued, delivered, pushed: 0, held: true };
   const pushed = await pushHeld(base44);
-  return { ...beat, queued, pushed };
+  return { ...beat, queued, delivered, pushed };
 };
 
 const drain = async (base44) => {
@@ -231,6 +236,7 @@ export default async function (req) {
     if (action === "disconnect") return Response.json(await disconnectLink(base44, body, user));
     if (action === "tick") return Response.json(await tickLocal(base44));
     if (action === "drain") return Response.json(await drain(base44));
+    if (action === "deliver") return Response.json({ ok: true, delivered: await deliverToWorkstations(base44) });
     if (action === "reset") return Response.json(await clearQueue(base44));
 
     if (action === "receive") {
