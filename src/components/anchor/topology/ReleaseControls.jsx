@@ -17,7 +17,7 @@ export default function ReleaseControls({ traffic, circuitUp, feedActive, canDri
   const drops = [
     { key: 'drop-1', label: 'Drop 1 message', count: 1 },
     { key: 'drop-3', label: 'Drop 3 messages', count: 3 },
-    { key: 'drop-all', label: 'Drop all queued', count: Math.min(pending, 10) },
+    { key: 'drop-all', label: `Drop all (${Math.min(pending, 10)})`, count: Math.min(pending, 10) },
   ];
 
   return (
@@ -59,9 +59,9 @@ export default function ReleaseControls({ traffic, circuitUp, feedActive, canDri
         {canDrive
           ? `${pending} ${pending === 1 ? 'message is' : 'messages are'} ready to drop. ${
               feedActive
-                ? 'The automatic feed is also running and will send messages on its own schedule; stop it to drive the queue by hand.'
+                ? 'The automatic feed is running and sends on its own schedule; the first drop stops it so only your clicks move traffic.'
                 : 'The automatic feed is stopped, so only these buttons move traffic.'
-            } Every drop is recorded in the audit trail.`
+            } Every drop, feed change and reload is recorded in the audit trail.`
           : 'Only an administrator drives the C2OIX server. The counts above still update live.'}
       </p>
     </div>
