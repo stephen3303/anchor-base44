@@ -110,7 +110,9 @@ export const deriveTraffic = (messages, circuitUp) => {
 
 /** Everything the diagram draws, derived from the link rows, the two servers and the traffic. */
 export const deriveTopology = ({ rows, servers, external, circuit, messages }) => {
-  const circuitUp = external === 'up';
+  // Up only when the command reports it up and the local server is connected to C2OIX:
+  // the same test the simulator uses before anything leaves C2OIX.
+  const circuitUp = external === 'up' && servers.local?.online !== false;
   const c2oix = servers.c2oix;
   const anchor = servers.local;
   const traffic = deriveTraffic(messages, circuitUp);
