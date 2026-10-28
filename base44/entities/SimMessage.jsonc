@@ -69,6 +69,21 @@
     "ingested_at": {
       "type": "string"
     },
+    "deliveries": {
+      "type": "object",
+      "description": "When the local server handed this message to each workstation, by workstation key.",
+      "properties": {
+        "ws1": {
+          "type": "string"
+        },
+        "ws2": {
+          "type": "string"
+        },
+        "ws3": {
+          "type": "string"
+        }
+      }
+    },
     "last_error": {
       "type": "string"
     }
