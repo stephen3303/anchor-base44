@@ -90,7 +90,7 @@ export const WORKSTATIONS = [
 export const circuitDown = async (base44) => {
   const local = await serverRow(base44, LOCAL);
   if (local && local.online === false) return true;
-  const { items } = await base44.asServiceRole.entities.LinkState.list({ sort: "-updated_date", limit: 1 });
+  const { items } = await base44.asServiceRole.entities.LinkState.list({ sort: "-created_date", limit: 1 });
   const state = (items || [])[0];
   return Boolean(state && state.external_up === false);
 };
