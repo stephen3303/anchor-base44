@@ -133,7 +133,7 @@ export default function Simulators() {
             size="sm"
             variant="outline"
             className={BUTTON}
-            onClick={() => act('feed', () => c2oix('feed', { active: !feedOn }), 'Could not change the feed')}
+            onClick={() => act('feed', () => c2oix('feed', { active: !feedOn, audit: true }), 'Could not change the feed')}
             disabled={busy === 'feed'}
           >
             <Radio className="h-3.5 w-3.5" aria-hidden="true" />
@@ -143,7 +143,7 @@ export default function Simulators() {
             size="sm"
             variant="outline"
             className={BUTTON}
-            onClick={() => act('seed', () => c2oix('seed', { force: messages.length > 0 }), 'Could not load the traffic')}
+            onClick={() => act('seed', () => c2oix('seed', { force: messages.length > 0, audit: true }), 'Could not load the traffic')}
             disabled={busy === 'seed'}
           >
             <RefreshCw className={cn('h-3.5 w-3.5', busy === 'seed' && 'animate-spin')} aria-hidden="true" />
