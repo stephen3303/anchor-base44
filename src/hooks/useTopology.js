@@ -31,12 +31,21 @@ export default function useTopology() {
   }, [load]);
 
   useEffect(() => {
+    // A release of several messages fires an event per row; read once they settle.
+    let timer;
+    const reload = () => {
+      clearTimeout(timer);
+      timer = setTimeout(load, 250);
+    };
     const off = [
-      base44.entities.NetworkLink.subscribe(load),
-      base44.entities.SimServer.subscribe(load),
-      base44.entities.SimMessage.subscribe(load),
+      base44.entities.NetworkLink.subscribe(reload),
+      base44.entities.SimServer.subscribe(reload),
+      base44.entities.SimMessage.subscribe(reload),
     ];
-    return () => off.forEach((unsubscribe) => unsubscribe());
+    return () => {
+      clearTimeout(timer);
+      off.forEach((unsubscribe) => unsubscribe());
+    };
   }, [load]);
 
   /** Report one workstation link. Every report is appended to the audit chain. */
