@@ -75,6 +75,57 @@ export const callPeer = async (base44, functionName, payload) => {
   return body;
 };
 
+/** The three workstations the local server serves, and the link that reaches each. */
+export const WORKSTATIONS = [
+  { key: "ws1", link: "anchor-ws1" },
+  { key: "ws2", link: "anchor-ws2" },
+  { key: "ws3", link: "anchor-ws3" },
+];
+
+/**
+ * Whether the circuit between the two servers is down. Either the local server has
+ * been disconnected or the command has reported the circuit down: in both cases
+ * nothing leaves C2OIX.
+ */
+export const circuitDown = async (base44) => {
+  const local = await serverRow(base44, LOCAL);
+  if (local && local.online === false) return true;
+  const { items } = await base44.asServiceRole.entities.LinkState.list({ sort: "-updated_date", limit: 1 });
+  const state = (items || [])[0];
+  return Boolean(state && state.external_up === false);
+};
+
+/**
+ * The local server handing what it has ingested on to each workstation whose link
+ * is up. A workstation that is cut off gets nothing; what it is owed waits on the
+ * local server and goes the moment its link is back.
+ */
+export const deliverToWorkstations = async (base44) => {
+  const { items: links } = await base44.asServiceRole.entities.NetworkLink.list({ limit: 50 });
+  const reachable = WORKSTATIONS.filter(
+    (station) => (links || []).find((row) => row.link_key === station.link)?.state !== "down",
+  );
+  if (!reachable.length) return 0;
+
+  const { items } = await base44.asServiceRole.entities.SimMessage.filter(
+    { status: "ingested" },
+    { sort: "ingested_at", limit: 200 },
+  );
+  const at = nowIso();
+  const patches = [];
+  for (const message of items || []) {
+    const deliveries = { ...(message.deliveries || {}) };
+    const owed = reachable.filter((station) => !deliveries[station.key]);
+    if (!owed.length) continue;
+    owed.forEach((station) => {
+      deliveries[station.key] = at;
+    });
+    patches.push({ id: message.id, deliveries });
+  }
+  if (patches.length) await base44.asServiceRole.entities.SimMessage.bulkUpdate(patches);
+  return patches.length;
+};
+
 /** The repository counted by where each message has got to. */
 export const messageCounts = async (base44) => {
   const [queued, deferred, ingested] = await Promise.all([
