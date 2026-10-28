@@ -22,6 +22,7 @@ const CATEGORY_BY_ACTION = {
   alert_rule_changed: 'admin',
   personnel_changed: 'admin',
   link_reported: 'act',
+  traffic_released: 'act',
   sync_replayed: 'system',
   turnover_saved: 'act',
   profile_updated: 'admin',
