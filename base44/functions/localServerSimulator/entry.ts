@@ -62,33 +62,39 @@ const beatLink = async (base44) => {
   return { ok: true, server: updated, online: updated.online !== false, peer_ok: peerOk, latency };
 };
 
-/** Record messages as received and held on the command server. */
+/**
+ * Record messages as received and held on the command server. A message already
+ * ingested (the feed and a reconnect can both hand over the same one) is found but
+ * not taken twice. Returns how many were found and how many were newly ingested.
+ */
 const ingest = async (base44, ids) => {
   const unique = [...new Set((ids || []).filter(Boolean))];
-  if (!unique.length) return 0;
+  if (!unique.length) return { found: 0, ingested: 0 };
   const { items } = await base44.asServiceRole.entities.SimMessage.filter({ id: { $in: unique } }, { limit: 200 });
   const at = nowIso();
-  const patches = (items || []).map((message) => ({
+  const patches = (items || []).filter((message) => message.status !== "ingested").map((message) => ({
     id: message.id,
     status: "ingested",
     ingested_at: at,
     dispatched_at: message.dispatched_at || at,
     last_error: "",
   }));
-  if (!patches.length) return 0;
+  if (!patches.length) return { found: (items || []).length, ingested: 0 };
   await base44.asServiceRole.entities.SimMessage.bulkUpdate(patches);
   await deliverToWorkstations(base44);
-  return patches.length;
+  return { found: (items || []).length, ingested: patches.length };
 };
 
 /** One message handed over by the external server. */
 const ingestInbound = async (base44, body) => {
   const messageId = typeof body?.message_id === "string" ? body.message_id : "";
   if (!messageId) return { error: "No message supplied" };
-  const ingested = await ingest(base44, [messageId]);
-  if (!ingested) return { error: "Message not held by the repository" };
-  const row = await ensureServer(base44, SERVER);
-  await patchServer(base44, SERVER, { received: (row.received || 0) + 1, note: "Message ingested" });
+  const { found, ingested } = await ingest(base44, [messageId]);
+  if (!found) return { error: "Message not held by the repository" };
+  if (ingested) {
+    const row = await ensureServer(base44, SERVER);
+    await patchServer(base44, SERVER, { received: (row.received || 0) + 1, note: "Message ingested" });
+  }
   return { ok: true, ingested, at: nowIso() };
 };
 
@@ -97,7 +103,7 @@ const pullBacklog = async (base44) => {
   try {
     const payload = await callPeer(base44, C2OIX_FUNCTION, { action: "backlog" });
     const items = payload?.items || [];
-    const ingested = await ingest(base44, items.map((message) => message.id));
+    const { ingested } = await ingest(base44, items.map((message) => message.id));
     return { requested: items.length, ingested };
   } catch (error) {
     return { requested: 0, ingested: 0, error: clip(String(error?.message || error), 200) };
