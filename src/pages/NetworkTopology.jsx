@@ -3,11 +3,13 @@ import { RefreshCw, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SectionCard from '@/components/anchor/SectionCard';
 import TopologyDiagram from '@/components/anchor/topology/TopologyDiagram';
+import ReleaseControls from '@/components/anchor/topology/ReleaseControls';
 import ReportedEffects from '@/components/anchor/topology/ReportedEffects';
 import useConnectivity from '@/hooks/useConnectivity';
 import useTopology from '@/hooks/useTopology';
 import { useAuth } from '@/lib/AuthContext';
-import { localServer } from '@/lib/simulator';
+import { recordAudit } from '@/lib/audit';
+import { c2oix, localServer } from '@/lib/simulator';
 import { CIRCUIT_KEY, deriveTopology } from '@/lib/topology';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -28,18 +30,90 @@ const BUTTON = 'h-9 gap-1.5 border-line text-[12.5px]';
  * The circuit is the command's real link state, so breaking it puts every screen
  * into Offline mode. The three workstation links are reported on this diagram and
  * appended to the audit chain.
+ *
+ * Each node shows how many messages it holds. An administrator can force C2OIX to
+ * send its next messages and watch them queue wherever a link is broken.
  */
 export default function NetworkTopology() {
   const { user } = useAuth();
   const { external, circuit, report } = useConnectivity();
-  const { rows, servers, busy, ready, load, reportLink, restoreAll } = useTopology();
+  const { rows, servers, messages, busy, ready, load, reportLink, restoreAll } = useTopology();
   const { toast } = useToast();
   const [working, setWorking] = useState('');
   const drivesSimulators = user?.role === 'admin';
 
-  const topology = deriveTopology({ rows, servers, external, circuit });
-  const { circuitUp, reachable, links } = topology;
+  const topology = deriveTopology({ rows, servers, external, circuit, messages });
+  const { circuitUp, reachable, links, traffic } = topology;
   const active = working || busy;
+
+  /** A workstation that comes back is caught up with what the local server holds for it. */
+  const catchUpWorkstations = async () => {
+    if (drivesSimulators) await localServer('deliver');
+  };
+
+  const dropMessages = async (count, key) => {
+    setWorking(key);
+    try {
+      const result = await c2oix('drop', { count });
+      if (!result || result.error) throw new Error(result?.error || 'No answer');
+      const plural = (n) => `${n} ${n === 1 ? 'message' : 'messages'}`;
+      await recordAudit({
+        action: 'traffic_released',
+        target_type: 'simulator',
+        target_reference: 'C2OIX server',
+        detail:
+          result.circuit === 'up'
+            ? `C2OIX forced to send ${plural(result.released)}: ${result.handed} handed to the ANCHOR server${
+                result.held ? `, ${result.held} held at C2OIX` : ''
+              }.`
+            : `C2OIX forced to release ${plural(result.released)} with the circuit down: held at C2OIX, not transmitted.`,
+      });
+      toast({
+        title: result.released ? `C2OIX dropped ${plural(result.released)}` : 'Nothing to drop',
+        description:
+          result.circuit === 'up'
+            ? `${result.handed} reached the ANCHOR server${result.held ? `; ${result.held} could not and wait at C2OIX` : ''}.`
+            : 'The circuit is down, so they wait at C2OIX and have not been transmitted.',
+      });
+    } catch (error) {
+      toast({ title: 'C2OIX did not drop', description: 'The simulator did not answer. Try again.' });
+    } finally {
+      setWorking('');
+      await load();
+    }
+  };
+
+  const setFeed = async (activeFeed) => {
+    setWorking('feed');
+    try {
+      await c2oix('feed', { active: activeFeed });
+      toast({
+        title: activeFeed ? 'Automatic feed started' : 'Automatic feed stopped',
+        description: activeFeed ? 'C2OIX sends on its own schedule as well.' : 'Only the drop buttons move traffic now.',
+      });
+    } catch (error) {
+      toast({ title: 'Could not change the feed', description: 'Try again.' });
+    } finally {
+      setWorking('');
+      await load();
+    }
+  };
+
+  const reloadTraffic = async () => {
+    const feedWasActive = Boolean(servers.c2oix?.feed_active);
+    setWorking('reload');
+    try {
+      await c2oix('seed', { force: true });
+      // Loading the repository starts the feed; leave it as the operator had it.
+      if (!feedWasActive) await c2oix('feed', { active: false });
+      toast({ title: 'Example traffic reloaded', description: 'Every message is back in the C2OIX queue.' });
+    } catch (error) {
+      toast({ title: 'Could not reload the traffic', description: 'Try again.' });
+    } finally {
+      setWorking('');
+      await load();
+    }
+  };
 
   const toggleCircuit = async () => {
     const up = !circuitUp;
@@ -78,6 +152,7 @@ export default function NetworkTopology() {
           ? 'Connection restored from the network topology demonstration.'
           : 'Connection broken from the network topology demonstration.',
       );
+      if (up) await catchUpWorkstations();
       toast({
         title: up ? `${link.label} restored` : `${link.label} broken`,
         description: up
@@ -101,6 +176,7 @@ export default function NetworkTopology() {
         }
       }
       await restoreAll();
+      await catchUpWorkstations();
       toast({
         title: 'All connections restored',
         description: 'The command reports both servers and all three workstations up.',
@@ -174,6 +250,19 @@ export default function NetworkTopology() {
         ) : (
           <p className="py-6 text-center text-[12.5px] text-mutedink">Reading link state…</p>
         )}
+      </SectionCard>
+
+      <SectionCard title="C2OIX release" hint="Force C2OIX to send, then break links and watch the messages queue">
+        <ReleaseControls
+          traffic={traffic}
+          circuitUp={circuitUp}
+          feedActive={Boolean(servers.c2oix?.feed_active)}
+          canDrive={drivesSimulators}
+          busy={active}
+          onDrop={dropMessages}
+          onFeed={setFeed}
+          onReload={reloadTraffic}
+        />
       </SectionCard>
 
       <SectionCard title="What the command reports" hint="Live, as the links above change">
