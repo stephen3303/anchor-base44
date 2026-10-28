@@ -16,6 +16,7 @@ export const LOCAL = "local";
 
 export const C2OIX_FUNCTION = "c2oixSimulator";
 export const LOCAL_FUNCTION = "localServerSimulator";
+export const AUDIT_FUNCTION = "recordAuditEvent";
 
 export const SERVER_LABEL = {
   [C2OIX]: "C2OIX server",
@@ -112,18 +113,24 @@ export const deliverToWorkstations = async (base44) => {
     { sort: "ingested_at", limit: 200 },
   );
   const at = nowIso();
-  const patches = [];
-  for (const message of items || []) {
+  let delivered = 0;
+  for (const listed of items || []) {
+    if (reachable.every((station) => listed.deliveries?.[station.key])) continue;
+    // Read the row again just before writing: another delivery may have run since
+    // the list was read, and its stamps must be kept, not overwritten.
+    const { items: fresh } = await base44.asServiceRole.entities.SimMessage.filter({ id: listed.id }, { limit: 1 });
+    const message = (fresh || [])[0];
+    if (!message || message.status !== "ingested") continue;
     const deliveries = { ...(message.deliveries || {}) };
     const owed = reachable.filter((station) => !deliveries[station.key]);
     if (!owed.length) continue;
     owed.forEach((station) => {
       deliveries[station.key] = at;
     });
-    patches.push({ id: message.id, deliveries });
+    await base44.asServiceRole.entities.SimMessage.update(message.id, { deliveries });
+    delivered += 1;
   }
-  if (patches.length) await base44.asServiceRole.entities.SimMessage.bulkUpdate(patches);
-  return patches.length;
+  return delivered;
 };
 
 /** The repository counted by where each message has got to. */
