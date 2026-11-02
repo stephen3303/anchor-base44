@@ -1,11 +1,11 @@
 /**
- * Templates are identified by tag, not by subject wording.
+ * A template claims traffic by its content.
  *
- * No standard is enforced on subject lines, so a feed or a check that keys on the
- * subject text breaks the moment an originator rewords it. A template therefore
- * declares the traffic it governs as tags over structured fields — message type,
- * originator, community, precedence — plus optional subject keywords for the
- * cases where only the subject distinguishes one class of traffic from another.
+ * Subject terms are checked against the subject line, body terms against the
+ * message text; both are matched without regard to case, and a term list left
+ * empty places no condition. Type, community, precedence and originator stay
+ * available as secondary tags that narrow the claim, but they are not what
+ * tells two classes of traffic apart — the wording does.
  *
  * Two uses follow from the same tags: a matched template can open a draft in its
  * own format, or validate the incoming message it claimed.
@@ -19,18 +19,29 @@ export const USE_LABEL = {
 
 const up = (value) => String(value ?? '').trim().toUpperCase();
 
+/** The message text a body term is matched against: every paragraph, heading included. */
+export const messageBodyText = (message) =>
+  (message?.sections || [])
+    .map((section) => `${section?.heading || ''} ${section?.body || ''}`)
+    .join(' ')
+    .trim();
+
 export const TAG_GROUPS = [
   { key: 'tag_message_types', label: 'Message type', kind: 'value', read: (message) => message?.type },
   { key: 'tag_originators', label: 'Originator', kind: 'value', read: (message) => message?.originator },
   { key: 'tag_communities', label: 'Community', kind: 'overlap', read: (message) => message?.communities },
   { key: 'tag_precedence', label: 'Precedence', kind: 'value', read: (message) => message?.precedence },
-  { key: 'tag_subject_keywords', label: 'Subject keyword', kind: 'keyword', read: (message) => message?.subject },
+  { key: 'tag_subject_keywords', label: 'Subject term', kind: 'keyword', read: (message) => message?.subject },
+  { key: 'tag_body_keywords', label: 'Body term', kind: 'keyword', read: (message) => messageBodyText(message) },
 ];
 
-const KEYWORD_GROUP = TAG_GROUPS[TAG_GROUPS.length - 1];
+const KEYWORD_GROUPS = TAG_GROUPS.filter((group) => group.kind === 'keyword');
 
 export const tagValues = (template, key) =>
   (template?.[key] || []).map((value) => String(value).trim()).filter(Boolean);
+
+/** Content terms — subject and body — are what actually identify a template. */
+export const taggedTermGroups = (template) => KEYWORD_GROUPS.filter((group) => tagValues(template, group.key).length);
 
 export const populatedTagGroups = (template) => TAG_GROUPS.filter((group) => tagValues(template, group.key).length > 0);
 
@@ -39,8 +50,8 @@ export const tagGroupMatches = (group, template, message) => {
   const wanted = tagValues(template, group.key).map(up);
   if (!wanted.length) return true;
   if (group.kind === 'keyword') {
-    const subject = up(message?.subject);
-    return wanted.some((word) => subject.includes(word));
+    const text = up(group.read(message));
+    return wanted.some((term) => text.includes(term));
   }
   if (group.kind === 'overlap') {
     const held = (message?.communities || []).map(up);
@@ -56,8 +67,10 @@ export const templateMatches = (template, message) => {
   return groups.every((group) => tagGroupMatches(group, template, message));
 };
 
-const specificity = (template) =>
-  populatedTagGroups(template).length * 100 + tagValues(template, 'tag_subject_keywords').length;
+const termCount = (template) =>
+  KEYWORD_GROUPS.reduce((sum, group) => sum + tagValues(template, group.key).length, 0);
+
+const specificity = (template) => populatedTagGroups(template).length * 100 + termCount(template);
 
 const matchedGroupCount = (template, message) =>
   populatedTagGroups(template).filter((group) => tagGroupMatches(group, template, message)).length;
@@ -78,15 +91,17 @@ export const templatesFor = (message, templates = [], use) =>
 export const templateFor = (message, templates = [], use) => templatesFor(message, templates, use)[0] || null;
 
 /**
- * The template a message most likely belongs to, for validation. A subject
- * keyword is a direct claim, so it must hold when one is tagged; otherwise the
- * closest template is taken and the failing tags are reported as non-conformance.
+ * The template a message most likely belongs to, for validation. A subject or
+ * body term is a direct claim, so at least one tagged term must be found in the
+ * message; otherwise the closest template is taken and the failing tags are
+ * reported as non-conformance.
  */
 export const templateCandidate = (message, templates = [], use) => {
   if (!message) return null;
   const claims = usable(templates, use).filter((template) => {
-    if (tagValues(template, 'tag_subject_keywords').length) {
-      return tagGroupMatches(KEYWORD_GROUP, template, message);
+    const groups = taggedTermGroups(template);
+    if (groups.length) {
+      return groups.some((group) => tagGroupMatches(group, template, message));
     }
     return matchedGroupCount(template, message) > 0;
   });
@@ -105,12 +120,15 @@ export const templateCandidate = (message, templates = [], use) => {
 export const matchReasons = (template, message) =>
   populatedTagGroups(template).map((group) => {
     const wanted = tagValues(template, group.key);
-    const hit =
-      group.kind === 'keyword'
-        ? wanted.filter((word) => up(message?.subject).includes(up(word)))
-        : group.kind === 'overlap'
-          ? wanted.filter((value) => (message?.communities || []).map(up).includes(up(value)))
-          : [group.read(message)];
+    let hit;
+    if (group.kind === 'keyword') {
+      const text = up(group.read(message));
+      hit = wanted.filter((term) => text.includes(up(term)));
+    } else if (group.kind === 'overlap') {
+      hit = wanted.filter((value) => (message?.communities || []).map(up).includes(up(value)));
+    } else {
+      hit = [group.read(message)];
+    }
     return { key: group.key, label: group.label, detail: hit.filter(Boolean).join(', ') || 'no match' };
   });
 

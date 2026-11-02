@@ -36,6 +36,7 @@ const EMPTY = {
   tag_communities: [],
   tag_precedence: [],
   tag_subject_keywords: [],
+  tag_body_keywords: [],
 };
 
 /** Builds a template from scratch: nothing is captured from an existing message. */
@@ -78,6 +79,7 @@ export default function NewTemplateDialog({ open, onOpenChange, onCreated }) {
         tag_communities: form.tag_communities,
         tag_precedence: form.tag_precedence,
         tag_subject_keywords: form.tag_subject_keywords,
+        tag_body_keywords: form.tag_body_keywords,
         active: true,
       });
       toast({

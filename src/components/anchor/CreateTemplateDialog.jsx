@@ -24,6 +24,7 @@ const EMPTY_TAGS = {
   tag_communities: [],
   tag_precedence: [],
   tag_subject_keywords: [],
+  tag_body_keywords: [],
 };
 
 const Captured = ({ label, value }) => (

@@ -85,6 +85,12 @@
         "type": "string"
       }
     },
+    "tag_body_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "active": {
       "type": "boolean",
       "default": true

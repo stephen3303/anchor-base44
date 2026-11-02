@@ -27,8 +27,9 @@ const Chip = ({ active, children, onClick }) => (
 );
 
 /**
- * The tags a template uses to claim traffic. A tag left empty places no condition;
- * a template with no tags at all claims nothing.
+ * The terms and tags a template uses to claim traffic. Subject and body terms
+ * identify traffic by its content; a list left empty places no condition, and a
+ * template with nothing set at all claims nothing.
  */
 export default function TemplateTriggerEditor({ value, onChange }) {
   const list = (key) => value[key] || [];
@@ -36,14 +37,19 @@ export default function TemplateTriggerEditor({ value, onChange }) {
   const toggle = (key, item) =>
     onChange({ [key]: list(key).includes(item) ? list(key).filter((entry) => entry !== item) : [...list(key), item] });
 
-  const taggedAnywhere = ['tag_message_types', 'tag_originators', 'tag_communities', 'tag_precedence', 'tag_subject_keywords'].some(
-    (key) => list(key).length > 0,
-  );
+  const taggedAnywhere = [
+    'tag_message_types',
+    'tag_originators',
+    'tag_communities',
+    'tag_precedence',
+    'tag_subject_keywords',
+    'tag_body_keywords',
+  ].some((key) => list(key).length > 0);
 
   return (
     <div className="space-y-3 rounded-sm border border-line bg-secondary/30 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className={LABEL}>Identifies traffic by tag</p>
+        <p className={LABEL}>Identifies traffic by content</p>
         <Select value={value.trigger_use || 'both'} onValueChange={(v) => onChange({ trigger_use: v })}>
           <SelectTrigger className="h-7 w-[168px] text-[12px]">
             <SelectValue />
@@ -109,15 +115,27 @@ export default function TemplateTriggerEditor({ value, onChange }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label className={LABEL}>Subject keywords</Label>
+        <Label className={LABEL}>Subject terms</Label>
         <CommaListInput
           value={list('tag_subject_keywords')}
           onChange={(next) => onChange({ tag_subject_keywords: next })}
           placeholder="READINESS, DEPLOYMENT"
         />
         <p className="text-[10.5px] leading-snug text-mutedink">
-          Any one of these words in the subject claims the message. Use them only where the setlines alone cannot tell two
-          classes of traffic apart.
+          Any one of these terms in the subject claims the message. Terms are matched without regard to case.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className={LABEL}>Body terms</Label>
+        <CommaListInput
+          value={list('tag_body_keywords')}
+          onChange={(next) => onChange({ tag_body_keywords: next })}
+          placeholder="REPORTING MATRIX, INTERIM REPORT"
+        />
+        <p className="text-[10.5px] leading-snug text-mutedink">
+          Any one of these terms in the message text claims the message, matched without regard to case. Subject and body
+          terms identify traffic by what it says, not by who sent it.
         </p>
       </div>
 
