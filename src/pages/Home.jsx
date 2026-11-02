@@ -100,7 +100,10 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key figures">
+      <section
+        className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(158px,1fr))]"
+        aria-label="Key figures"
+      >
         <KpiCard
           label="Mandatory acks"
           value={pending.length}
@@ -117,8 +120,8 @@ export default function Home() {
         <KpiCard label="Open action items" value={actions.length} note="With a suspense date" />
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
-        <div className="space-y-5">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
+        <div className="min-w-0 space-y-5">
           {pending.length > 0 && (
             <SectionCard
               title="Mandatory acknowledgements due"
@@ -148,7 +151,7 @@ export default function Home() {
           </SectionCard>
         </div>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           {changes.length > 0 && (
             <SectionCard title="Recent status changes" hint="Amended, corrected, cancelled, superseded">
               <StatusChangeList messages={changes} />

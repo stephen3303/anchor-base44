@@ -11,7 +11,7 @@ export default function MandatoryAckCard({ message, onAcknowledge }) {
   return (
     <article
       className={cn(
-        'rounded-r-md border border-l-[3px] border-line bg-white px-4 py-3.5 shadow-sm',
+        'min-w-0 rounded-r-md border border-l-[3px] border-line bg-white px-4 py-3.5 shadow-sm',
         PRECEDENCE_RULE[message.precedence],
       )}
     >
