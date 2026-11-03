@@ -58,8 +58,10 @@ export default function AppHeader({ onOpenMenu }) {
               ANCHOR
             </span>
             <span className="hidden h-7 w-px bg-gold/60 xl:block" aria-hidden="true" />
-            <span className="hidden max-w-[420px] truncate text-[10.5px] font-medium uppercase tracking-[0.16em] text-navy-100/65 xl:block">
-              Authoritative Naval Communications Hub for Official Records
+            <span className="hidden max-w-[420px] text-[10.5px] font-medium uppercase leading-[1.4] tracking-[0.16em] text-navy-100/65 xl:block">
+              Authoritative Naval Communications
+              <br />
+              Hub for Official Records
             </span>
           </div>
 
