@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Power, Radio, RefreshCw, ShieldAlert, Trash2, Zap } from 'lucide-react';
+import { Power, Radio, RefreshCw, Send, ShieldAlert, Trash2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -96,8 +96,9 @@ export default function Simulators() {
             Server simulators
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] text-mutedink">
-            Two stand-in servers. The external one holds the example traffic and hands it over at random intervals; the
-            local one beats the circuit, ingests what arrives and holds every release for transmit.
+            Two stand-in servers. The external one holds the example traffic and hands the next message over when an
+            operator releases it; the local one beats the circuit, ingests what arrives and holds every release for
+            transmit.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -120,7 +121,7 @@ export default function Simulators() {
           stateLabel={feedOn ? 'Feed running' : 'Feed stopped'}
           tone={feedOn ? 'up' : 'attention'}
           meta={external?.last_beat_at ? `beat ${formatZulu(external.last_beat_at)}` : 'no beat yet'}
-          subtitle="Holds the repository of example messages and hands them to the local server one at a time, at intervals of twenty seconds to three minutes. Anything the local server cannot take is held here as deferred."
+          subtitle="Holds the repository of example messages and hands the next one to the local server when an operator releases it. Nothing is handed over on the beat. Anything the local server cannot take is held here as deferred."
           facts={[
             { label: 'Queued', value: counts.queued },
             { label: 'Deferred here', value: counts.deferred },
@@ -153,11 +154,11 @@ export default function Simulators() {
             size="sm"
             variant="outline"
             className={BUTTON}
-            onClick={() => act('c2oix', () => c2oix('tick'), 'The C2OIX server did not answer')}
+            onClick={() => act('c2oix', () => c2oix('release'), 'The C2OIX server did not answer')}
             disabled={busy === 'c2oix'}
           >
-            <Zap className="h-3.5 w-3.5" aria-hidden="true" />
-            Hand over what is due
+            <Send className="h-3.5 w-3.5" aria-hidden="true" />
+            Release next message
           </Button>
         </ServerCard>
 

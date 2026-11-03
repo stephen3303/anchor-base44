@@ -5,19 +5,24 @@ import TopologyNode from './TopologyNode';
  * Top to bottom: the external server, the circuit, the command server, then the
  * three workstations it serves. Any connection in the chain can be broken.
  */
-export default function TopologyDiagram({ topology, busy, onToggleCircuit, onToggleLink, onShowQueue }) {
+export default function TopologyDiagram({ topology, busy, onToggleCircuit, onToggleLink, onShowQueue, onRelease }) {
   const { nodes, links, circuitLink } = topology;
 
   return (
     <div className="flex flex-col items-center">
       <div className="w-full max-w-[420px]">
-        <TopologyNode node={nodes.c2oix} onShowQueue={() => onShowQueue('c2oix')} />
+        <TopologyNode
+          node={nodes.c2oix}
+          busy={busy}
+          onRelease={onRelease}
+          onShowQueue={() => onShowQueue('c2oix')}
+        />
       </div>
 
       <TopologyLink link={circuitLink} busy={busy} onToggle={onToggleCircuit} />
 
       <div className="w-full max-w-[420px]">
-        <TopologyNode node={nodes.anchor} onShowQueue={() => onShowQueue('anchor')} />
+        <TopologyNode node={nodes.anchor} busy={busy} onShowQueue={() => onShowQueue('anchor')} />
       </div>
 
       <div className="hidden w-full flex-col items-center sm:flex" aria-hidden="true">
@@ -29,7 +34,7 @@ export default function TopologyDiagram({ topology, busy, onToggleCircuit, onTog
         {links.map((link) => (
           <div key={link.key} className="flex flex-col items-center">
             <TopologyLink link={link} busy={busy} onToggle={() => onToggleLink(link)} />
-            <TopologyNode node={nodes[link.to]} />
+            <TopologyNode node={nodes[link.to]} busy={busy} />
           </div>
         ))}
       </div>

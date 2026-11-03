@@ -10,7 +10,6 @@ import {
   messageCounts,
   nowIso,
   patchServer,
-  randomIntervalMs,
   serverRow,
   splitList,
 } from "../../shared/simTraffic.ts";
@@ -18,29 +17,28 @@ import {
 /**
  * The external C2OIX server simulator.
  *
- * It holds a repository of example messages and hands them to the local server at
- * random intervals. When the local server is not reachable the message is not lost:
- * it is held here as deferred, and handed over when the local server asks for the
- * backlog on reconnect.
+ * It holds a repository of example messages and hands the next one to the local
+ * server only when an operator releases it — a beat never releases traffic. When
+ * the local server is not reachable the message is not lost: it is held here as
+ * deferred, and handed over when the local server asks for the backlog on reconnect.
  *
- * Actions: status, heartbeat, seed, feed, tick, backlog, receive, reset.
+ * Actions: status, heartbeat, seed, feed, tick, release, backlog, receive, reset.
  */
 
 const SERVER = C2OIX;
-/** One handover per tick, so arrivals trickle in rather than arrive in a block. */
-const MAX_PER_TICK = 1;
 
-const nextDue = async (base44) => {
+/** The next message waiting in the repository, in the order it was loaded. */
+const nextQueued = async (base44) => {
   const { items } = await base44.asServiceRole.entities.SimMessage.filter(
     { status: "queued" },
-    { sort: "scheduled_for", limit: 5 },
+    { sort: "sequence", limit: 1 },
   );
-  return (items || []).find((message) => message.scheduled_for) || null;
+  return (items || [])[0] || null;
 };
 
 const reportExternalStatus = async (base44) => {
   const row = await ensureServer(base44, SERVER);
-  return { ok: true, server: row, counts: await messageCounts(base44), next: await nextDue(base44), at: nowIso() };
+  return { ok: true, server: row, counts: await messageCounts(base44), next: await nextQueued(base44), at: nowIso() };
 };
 
 /** The external server answering a beat from the local server. */
@@ -96,76 +94,75 @@ const feed = async (base44, body) => {
   return { ok: true, server: row };
 };
 
-/** Give every unscheduled message an arrival time, spread over random intervals. */
-const schedule = async (base44) => {
-  const { items } = await base44.asServiceRole.entities.SimMessage.filter(
-    { status: "queued" },
-    { sort: "sequence", limit: 100 },
-  );
-  const pending = (items || []).filter((message) => !message.scheduled_for);
-  if (!pending.length) return 0;
-  let cursor = Date.now();
-  const patches = pending.map((message) => {
-    cursor += randomIntervalMs();
-    return { id: message.id, scheduled_for: new Date(cursor).toISOString() };
-  });
-  await base44.asServiceRole.entities.SimMessage.bulkUpdate(patches);
-  return patches.length;
+/** Hand one message to the local server; hold it here as deferred if it cannot take it. */
+const handOver = async (base44, message, peer) => {
+  const attempts = (message.attempts || 0) + 1;
+  const at = nowIso();
+  if (!peer || peer.online === false) {
+    await base44.asServiceRole.entities.SimMessage.update(message.id, {
+      status: "deferred",
+      attempts,
+      attempted_at: at,
+      last_error: "Local server not reachable — held at C2OIX",
+    });
+    return "deferred";
+  }
+  try {
+    await callPeer(base44, LOCAL_FUNCTION, { action: "receive", message_id: message.id });
+    // The local server has recorded it as ingested; this only notes the handover.
+    await base44.asServiceRole.entities.SimMessage.update(message.id, {
+      attempts,
+      attempted_at: at,
+      dispatched_at: at,
+      last_error: "",
+    });
+    return "handed";
+  } catch (error) {
+    await base44.asServiceRole.entities.SimMessage.update(message.id, {
+      status: "deferred",
+      attempts,
+      attempted_at: at,
+      last_error: clip(String(error?.message || error), 200),
+    });
+    return "deferred";
+  }
 };
 
-/** Beat, then hand over whatever is due — or hold it if the local server is down. */
+/** The beat. Handover is a release by the operator, never a beat. */
 const tickExternal = async (base44) => {
   const beat = await beatExternal(base44);
-  const row = await serverRow(base44, SERVER);
-  if (row && row.online === false) return { ...beat, skipped: "server stopped" };
-  if (!row || row.feed_active === false) return { ...beat, skipped: "feed stopped" };
+  return { ...beat, handed: 0, deferred: 0 };
+};
 
-  const scheduled = await schedule(base44);
+/** One message released by the operator: the next in the repository. */
+const releaseExternal = async (base44, user) => {
+  const row = await ensureServer(base44, SERVER);
+  if (row.online === false) return { ok: false, error: "The C2OIX server is stopped" };
+  if (row.feed_active === false) return { ok: false, error: "The C2OIX feed is stopped" };
 
-  const { items } = await base44.asServiceRole.entities.SimMessage.filter(
-    { status: "queued", scheduled_for: { $lte: nowIso() } },
-    { sort: "scheduled_for", limit: MAX_PER_TICK + 4 },
-  );
-  const due = (items || []).filter((message) => message.scheduled_for).slice(0, MAX_PER_TICK);
-  const peer = await serverRow(base44, LOCAL);
-  const at = nowIso();
-  let handed = 0;
-  let deferred = 0;
-
-  for (const message of due) {
-    const attempts = (message.attempts || 0) + 1;
-    if (!peer || peer.online === false) {
-      await base44.asServiceRole.entities.SimMessage.update(message.id, {
-        status: "deferred",
-        attempts,
-        attempted_at: at,
-        last_error: "Local server not reachable — held at C2OIX",
-      });
-      deferred += 1;
-      continue;
-    }
-    try {
-      await callPeer(base44, LOCAL_FUNCTION, { action: "receive", message_id: message.id });
-      // The local server has recorded it as ingested; this only notes the handover.
-      await base44.asServiceRole.entities.SimMessage.update(message.id, {
-        attempts,
-        attempted_at: at,
-        dispatched_at: at,
-        last_error: "",
-      });
-      handed += 1;
-    } catch (error) {
-      await base44.asServiceRole.entities.SimMessage.update(message.id, {
-        status: "deferred",
-        attempts,
-        attempted_at: at,
-        last_error: clip(String(error?.message || error), 200),
-      });
-      deferred += 1;
-    }
+  const message = await nextQueued(base44);
+  if (!message) {
+    return { ok: true, released: 0, deferred: 0, note: "Nothing is queued at C2OIX", counts: await messageCounts(base44) };
   }
 
-  return { ...beat, scheduled, handed, deferred, due: due.length, counts: await messageCounts(base44) };
+  const outcome = await handOver(base44, message, await serverRow(base44, LOCAL));
+  await patchServer(base44, SERVER, {
+    last_beat_at: nowIso(),
+    note:
+      outcome === "handed"
+        ? `Released ${message.reference} to the local server`
+        : `Held ${message.reference} — the local server is not reachable`,
+    updated_by_name: user?.full_name || user?.email || "",
+  });
+
+  return {
+    ok: true,
+    released: outcome === "handed" ? 1 : 0,
+    deferred: outcome === "deferred" ? 1 : 0,
+    message: { reference: message.reference, subject: message.subject, precedence: message.precedence },
+    counts: await messageCounts(base44),
+    at: nowIso(),
+  };
 };
 
 /** Everything held while the local server was away. */
@@ -223,6 +220,7 @@ export default async function (req) {
     if (action === "seed") return Response.json(await seed(base44, body));
     if (action === "feed") return Response.json(await feed(base44, body));
     if (action === "tick") return Response.json(await tickExternal(base44));
+    if (action === "release") return Response.json(await releaseExternal(base44, user));
     if (action === "backlog") return Response.json(await backlog(base44));
     if (action === "reset") return Response.json(await clearRepository(base44));
 

@@ -8,7 +8,7 @@ import NodeQueueDialog from '@/components/anchor/topology/NodeQueueDialog';
 import useConnectivity from '@/hooks/useConnectivity';
 import useTopology from '@/hooks/useTopology';
 import { useAuth } from '@/lib/AuthContext';
-import { localServer } from '@/lib/simulator';
+import { c2oix, localServer } from '@/lib/simulator';
 import { CIRCUIT_KEY, deriveTopology } from '@/lib/topology';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -88,6 +88,34 @@ export default function NetworkTopology() {
       });
     } catch (error) {
       toast({ title: 'Could not report the link', description: 'The command server did not answer. Try again.' });
+    } finally {
+      setWorking('');
+    }
+  };
+
+  /** The C2OIX node hands over one message only when this is pressed. */
+  const releaseNext = async () => {
+    setWorking('release');
+    try {
+      const result = await c2oix('release');
+      if (result?.error) {
+        toast({ title: 'Could not release a message', description: result.error });
+      } else if (result?.released) {
+        toast({
+          title: `Released ${result.message?.reference || 'one message'}`,
+          description: `Ingested by the ANCHOR server. ${result.counts?.queued || 0} still queued at C2OIX.`,
+        });
+      } else if (result?.deferred) {
+        toast({
+          title: `${result.message?.reference || 'The message'} held at C2OIX`,
+          description: 'The local server is not reachable, so the message was deferred.',
+        });
+      } else {
+        toast({ title: 'Nothing to release', description: 'The C2OIX repository has nothing queued.' });
+      }
+      await load();
+    } catch (error) {
+      toast({ title: 'Could not release a message', description: 'The C2OIX server did not answer. Try again.' });
     } finally {
       setWorking('');
     }
@@ -178,6 +206,7 @@ export default function NetworkTopology() {
             onToggleCircuit={toggleCircuit}
             onToggleLink={toggleLink}
             onShowQueue={setQueueNode}
+            onRelease={drivesSimulators ? releaseNext : undefined}
           />
         ) : (
           <p className="py-6 text-center text-[12.5px] text-mutedink">Reading link state…</p>
@@ -203,8 +232,9 @@ export default function NetworkTopology() {
         </Button>
         <p className="text-[11.5px] leading-relaxed text-mutedink">
           The two servers are the simulators: their feed, beats and received traffic come from the same rows the Server
-          simulators screen drives. An administrator breaking the circuit here also stops the feed and defers what is
-          due; for everyone else the circuit is reported and the simulators are left as the watch set them.
+          simulators screen drives. Nothing is handed over by itself — an administrator releases each message from the
+          C2OIX node. Breaking the circuit here also stops the feed and defers what is released; for everyone else the
+          circuit is reported and the simulators are left as the watch set them.
         </p>
       </div>
     </div>

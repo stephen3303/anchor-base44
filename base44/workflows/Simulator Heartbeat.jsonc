@@ -17,7 +17,7 @@
       "ends_after_count": null
     }
   },
-  "description": "Pulses the two server simulators every five minutes: the local ANCHOR server beats the C2OIX circuit and holds anything released, then the C2OIX server hands over whatever is due.",
+  "description": "Pulses the two server simulators every five minutes: the local ANCHOR server beats the C2OIX circuit and holds anything released, then the C2OIX server beats. Nothing is handed over on the beat \u2014 an operator releases each message.",
   "definition": {
     "document": {
       "dsl": "1.0.0",
@@ -53,8 +53,8 @@
           },
           "then": "end",
           "x-base44": {
-            "title": "Hand over due traffic",
-            "description": "One message at most"
+            "title": "Beat the C2OIX server",
+            "description": "Heartbeat only \u2014 releases are by operator"
           }
         }
       }
