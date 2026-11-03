@@ -1,4 +1,5 @@
-import { Monitor, Server } from 'lucide-react';
+import { ListOrdered, Monitor, Server } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const TONE = {
@@ -20,7 +21,7 @@ const TONE = {
 };
 
 /** One node of the diagram: what it is, what state it is in, and the facts that show it. */
-export default function TopologyNode({ node }) {
+export default function TopologyNode({ node, onShowQueue }) {
   const style = TONE[node.status] || TONE.unknown;
   const Icon = node.kind === 'server' ? Server : Monitor;
 
@@ -59,6 +60,18 @@ export default function TopologyNode({ node }) {
           </div>
         ))}
       </dl>
+
+      {onShowQueue && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2.5 h-7 w-full gap-1.5 border-line px-2 text-[11px] text-navy-800 hover:bg-navy-100/60"
+          onClick={onShowQueue}
+        >
+          <ListOrdered className="h-3.5 w-3.5" aria-hidden="true" />
+          Show message queue
+        </Button>
+      )}
     </div>
   );
 }

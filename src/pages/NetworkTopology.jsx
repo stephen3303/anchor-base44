@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import SectionCard from '@/components/anchor/SectionCard';
 import TopologyDiagram from '@/components/anchor/topology/TopologyDiagram';
 import ReportedEffects from '@/components/anchor/topology/ReportedEffects';
+import NodeQueueDialog from '@/components/anchor/topology/NodeQueueDialog';
 import useConnectivity from '@/hooks/useConnectivity';
 import useTopology from '@/hooks/useTopology';
 import { useAuth } from '@/lib/AuthContext';
@@ -35,6 +36,7 @@ export default function NetworkTopology() {
   const { rows, servers, busy, ready, load, reportLink, restoreAll } = useTopology();
   const { toast } = useToast();
   const [working, setWorking] = useState('');
+  const [queueNode, setQueueNode] = useState(null);
   const drivesSimulators = user?.role === 'admin';
 
   const topology = deriveTopology({ rows, servers, external, circuit });
@@ -170,7 +172,13 @@ export default function NetworkTopology() {
         hint={ready ? 'Click a connection to break or restore it' : 'Reading link state…'}
       >
         {ready ? (
-          <TopologyDiagram topology={topology} busy={active} onToggleCircuit={toggleCircuit} onToggleLink={toggleLink} />
+          <TopologyDiagram
+            topology={topology}
+            busy={active}
+            onToggleCircuit={toggleCircuit}
+            onToggleLink={toggleLink}
+            onShowQueue={setQueueNode}
+          />
         ) : (
           <p className="py-6 text-center text-[12.5px] text-mutedink">Reading link state…</p>
         )}
@@ -179,6 +187,14 @@ export default function NetworkTopology() {
       <SectionCard title="What the command reports" hint="Live, as the links above change">
         <ReportedEffects topology={topology} />
       </SectionCard>
+
+      <NodeQueueDialog
+        nodeKey={queueNode || 'c2oix'}
+        open={Boolean(queueNode)}
+        onOpenChange={(next) => {
+          if (!next) setQueueNode(null);
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button size="sm" variant="ghost" className="h-9 text-[12.5px] text-mutedink" onClick={load} disabled={Boolean(active)}>

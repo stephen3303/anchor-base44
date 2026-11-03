@@ -5,19 +5,19 @@ import TopologyNode from './TopologyNode';
  * Top to bottom: the external server, the circuit, the command server, then the
  * three workstations it serves. Any connection in the chain can be broken.
  */
-export default function TopologyDiagram({ topology, busy, onToggleCircuit, onToggleLink }) {
+export default function TopologyDiagram({ topology, busy, onToggleCircuit, onToggleLink, onShowQueue }) {
   const { nodes, links, circuitLink } = topology;
 
   return (
     <div className="flex flex-col items-center">
       <div className="w-full max-w-[420px]">
-        <TopologyNode node={nodes.c2oix} />
+        <TopologyNode node={nodes.c2oix} onShowQueue={() => onShowQueue('c2oix')} />
       </div>
 
       <TopologyLink link={circuitLink} busy={busy} onToggle={onToggleCircuit} />
 
       <div className="w-full max-w-[420px]">
-        <TopologyNode node={nodes.anchor} />
+        <TopologyNode node={nodes.anchor} onShowQueue={() => onShowQueue('anchor')} />
       </div>
 
       <div className="hidden w-full flex-col items-center sm:flex" aria-hidden="true">
