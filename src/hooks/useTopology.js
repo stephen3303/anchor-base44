@@ -10,16 +10,23 @@ import { WORKSTATION_LINKS, loadWorkstationLinks, nodeByKey } from '@/lib/topolo
 export default function useTopology() {
   const [rows, setRows] = useState([]);
   const [servers, setServers] = useState({});
+  const [traffic, setTraffic] = useState({});
   const [busy, setBusy] = useState('');
   const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
-    const [linkRows, { items: serverRows }] = await Promise.all([
+    const [linkRows, { items: serverRows }, queued, deferred, ingested, held, transmitted] = await Promise.all([
       loadWorkstationLinks(),
       base44.entities.SimServer.list({ limit: 10 }),
+      base44.entities.SimMessage.count({ status: 'queued' }),
+      base44.entities.SimMessage.count({ status: 'deferred' }),
+      base44.entities.SimMessage.count({ status: 'ingested' }),
+      base44.entities.SimTransmission.count({ status: 'held' }),
+      base44.entities.SimTransmission.count({ status: 'transmitted' }),
     ]);
     setRows(linkRows);
     setServers(Object.fromEntries((serverRows || []).map((row) => [row.server, row])));
+    setTraffic({ queued, deferred, ingested, held, transmitted });
   }, []);
 
   useEffect(() => {
@@ -27,7 +34,12 @@ export default function useTopology() {
   }, [load]);
 
   useEffect(() => {
-    const off = [base44.entities.NetworkLink.subscribe(load), base44.entities.SimServer.subscribe(load)];
+    const off = [
+      base44.entities.NetworkLink.subscribe(load),
+      base44.entities.SimServer.subscribe(load),
+      base44.entities.SimMessage.subscribe(load),
+      base44.entities.SimTransmission.subscribe(load),
+    ];
     return () => off.forEach((unsubscribe) => unsubscribe());
   }, [load]);
 
@@ -94,5 +106,5 @@ export default function useTopology() {
     }
   }, [rows, load]);
 
-  return { rows, servers, busy, ready, load, reportLink, restoreAll };
+  return { rows, servers, busy, ready, load, reportLink, restoreAll, traffic };
 }

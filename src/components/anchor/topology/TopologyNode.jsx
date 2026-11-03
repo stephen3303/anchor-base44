@@ -1,6 +1,7 @@
 import { ListOrdered, Monitor, Send, Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import NodePipes from './NodePipes';
 
 const TONE = {
   up: {
@@ -60,6 +61,8 @@ export default function TopologyNode({ node, busy, onShowQueue, onRelease }) {
           </div>
         ))}
       </dl>
+
+      {node.pipes && <NodePipes pipes={node.pipes} />}
 
       {(onRelease || onShowQueue) && (
         <div className="mt-2.5 flex flex-col gap-1.5">

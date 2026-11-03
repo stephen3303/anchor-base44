@@ -33,13 +33,13 @@ const BUTTON = 'h-9 gap-1.5 border-line text-[12.5px]';
 export default function NetworkTopology() {
   const { user } = useAuth();
   const { external, circuit, report } = useConnectivity();
-  const { rows, servers, busy, ready, load, reportLink, restoreAll } = useTopology();
+  const { rows, servers, traffic, busy, ready, load, reportLink, restoreAll } = useTopology();
   const { toast } = useToast();
   const [working, setWorking] = useState('');
   const [queueNode, setQueueNode] = useState(null);
   const drivesSimulators = user?.role === 'admin';
 
-  const topology = deriveTopology({ rows, servers, external, circuit });
+  const topology = deriveTopology({ rows, servers, external, circuit, traffic });
   const { circuitUp, reachable, links } = topology;
   const active = working || busy;
 

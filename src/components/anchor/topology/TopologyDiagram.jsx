@@ -38,6 +38,12 @@ export default function TopologyDiagram({ topology, busy, onToggleCircuit, onTog
           </div>
         ))}
       </div>
+
+      <p className="mt-4 max-w-[560px] text-center text-[11px] leading-relaxed text-mutedink">
+        Every node carries two pipes: inbound traffic arriving and outbound traffic leaving. Waiting is what that node
+        holds right now; processed is the running total since the simulators were reset. A pipe greys out while the link
+        carrying it is down.
+      </p>
     </div>
   );
 }

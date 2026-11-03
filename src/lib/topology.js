@@ -59,11 +59,25 @@ export const loadWorkstationLinks = async () => {
   return settled.items || [];
 };
 
-/** Everything the diagram draws, derived from the link rows and the two servers. */
-export const deriveTopology = ({ rows, servers, external, circuit }) => {
+/**
+ * Everything the diagram draws, derived from the link rows, the two servers and the
+ * traffic the simulators are holding.
+ *
+ * Every node carries two pipes: what arrives, and what leaves. "Waiting" is what the
+ * node holds right now; "processed" is the running total since the simulators were
+ * reset. A pipe is live only while the link that carries it is up.
+ */
+export const deriveTopology = ({ rows, servers, external, circuit, traffic }) => {
   const circuitUp = external === 'up';
   const c2oix = servers.c2oix;
   const anchor = servers.local;
+
+  const queued = traffic?.queued || 0;
+  const deferred = traffic?.deferred || 0;
+  const ingested = traffic?.ingested || 0;
+  const held = traffic?.held || 0;
+  const transmitted = traffic?.transmitted || 0;
+  const repository = queued + deferred + ingested;
 
   const links = WORKSTATION_LINKS.map((link) => {
     const row = (rows || []).find((item) => item.link_key === link.key);
@@ -84,6 +98,10 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
       status: circuitUp ? 'up' : 'down',
       statusLabel: circuitUp ? 'Reachable' : 'Unreachable',
       statusNote: circuitUp ? '' : 'The circuit is down, so nothing at this command can reach the C2OIX server.',
+      pipes: {
+        inbound: { waiting: 0, processed: repository, live: circuitUp },
+        outbound: { waiting: queued + deferred, processed: ingested, live: circuitUp },
+      },
       facts: [
         { label: 'Feed', value: c2oix?.feed_active ? 'running' : 'stopped' },
         { label: 'Last beat', value: c2oix?.last_beat_at ? formatZulu(c2oix.last_beat_at) : 'none' },
@@ -95,6 +113,10 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
       status: 'up',
       statusLabel: 'Online',
       statusNote: '',
+      pipes: {
+        inbound: { waiting: 0, processed: ingested, live: circuitUp },
+        outbound: { waiting: held, processed: transmitted, live: circuitUp },
+      },
       facts: [
         { label: 'Circuit', value: circuitUp ? 'up' : 'down' },
         { label: 'Workstations reachable', value: `${reachable} of ${links.length}` },
@@ -113,6 +135,10 @@ export const deriveTopology = ({ rows, servers, external, circuit }) => {
         link.state === 'down'
           ? 'This workstation cannot reach the ANCHOR server: it shows the server-unavailable banner and holds its work locally.'
           : '',
+      pipes: {
+        inbound: { waiting: 0, processed: ingested, live: link.state === 'up' },
+        outbound: { waiting: 0, processed: 0, live: link.state === 'up' },
+      },
       facts: [
         { label: 'Reaches ANCHOR', value: link.state === 'up' ? 'yes' : 'no' },
         { label: 'State reported', value: link.reportedAt || '—' },
