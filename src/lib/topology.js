@@ -16,7 +16,7 @@ export const NODES = [
     kind: 'server',
     code: 'C2OIX',
     name: 'External C2OIX server',
-    detail: 'Outside the command. Holds the repository of traffic and hands it over the circuit.',
+    detail: 'Outside the command. Holds the repository of traffic and releases it over the circuit when an operator sends it.',
   },
   {
     key: 'anchor',

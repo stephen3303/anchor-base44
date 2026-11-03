@@ -20,8 +20,8 @@ const BUTTON = 'h-9 gap-1.5 border-line text-[12.5px]';
 /**
  * The two server simulators, and the traffic moving between them.
  *
- * The external C2OIX server holds the example repository and hands messages over at
- * random intervals; the local ANCHOR server beats the circuit, ingests what arrives,
+ * The external C2OIX server holds the example repository and hands the next message
+ * over when an operator releases it; the local ANCHOR server beats the circuit, ingests what arrives,
  * and holds every release for transmit until the circuit takes it. Disconnect the
  * local server and the external one defers; reconnect and it asks for the whole
  * backlog and then pushes the held releases.

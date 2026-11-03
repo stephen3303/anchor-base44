@@ -2,8 +2,8 @@
  * The two server simulators, and the example traffic the external one serves.
  *
  *   C2OIX server  — the external server. It holds a repository of example messages
- *                   and hands them over at random intervals, the way live traffic
- *                   arrives: never on the hour, never in a block.
+ *                   and hands the next one over only when an operator releases it;
+ *                   the beat never releases traffic.
  *   Local server  — the ANCHOR server at this command. It heartbeats the external
  *                   server, ingests what is handed over, and holds everything that
  *                   has to leave the command until the circuit is back.
