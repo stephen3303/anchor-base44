@@ -77,7 +77,8 @@ export const deriveTopology = ({ rows, servers, external, circuit, traffic }) =>
   const ingested = traffic?.ingested || 0;
   const held = traffic?.held || 0;
   const transmitted = traffic?.transmitted || 0;
-  const repository = queued + deferred + ingested;
+  // Everything still sitting in the C2OIX repository, awaiting delivery to this command.
+  const inboundPending = queued + deferred;
 
   const links = WORKSTATION_LINKS.map((link) => {
     const row = (rows || []).find((item) => item.link_key === link.key);
@@ -99,8 +100,12 @@ export const deriveTopology = ({ rows, servers, external, circuit, traffic }) =>
       statusLabel: circuitUp ? 'Reachable' : 'Unreachable',
       statusNote: circuitUp ? '' : 'The circuit is down, so nothing at this command can reach the C2OIX server.',
       pipes: {
-        inbound: { waiting: 0, processed: repository, live: circuitUp },
-        outbound: { waiting: queued + deferred, processed: ingested, live: circuitUp },
+        // Traffic bound for this command: held here until the circuit can carry it, counted
+        // as processed only once the ANCHOR server has ingested it.
+        inbound: { waiting: inboundPending, processed: ingested, live: circuitUp },
+        // What the command sends up. The external server takes it on arrival, so nothing
+        // ever waits outbound here — it is delivered the moment it is transmitted.
+        outbound: { waiting: 0, processed: transmitted, live: circuitUp },
       },
       facts: [
         { label: 'Feed', value: c2oix?.feed_active ? 'running' : 'stopped' },

@@ -40,9 +40,10 @@ export default function TopologyDiagram({ topology, busy, onToggleCircuit, onTog
       </div>
 
       <p className="mt-4 max-w-[560px] text-center text-[11px] leading-relaxed text-mutedink">
-        Every node carries two pipes: inbound traffic arriving and outbound traffic leaving. Waiting is what that node
-        holds right now; processed is the running total since the simulators were reset. A pipe greys out while the link
-        carrying it is down.
+        Every node carries two pipes: inbound traffic coming into the command through it, and outbound traffic it sends
+        away. Waiting is what that node holds right now; processed is the running total since the simulators were reset.
+        Traffic bound for this command waits at C2OIX until the circuit can carry it; what the command releases is
+        delivered the moment it is transmitted, so nothing waits outbound there. A pipe greys out while its link is down.
       </p>
     </div>
   );
