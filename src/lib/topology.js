@@ -26,8 +26,8 @@ export const NODES = [
     detail: 'At this command. Serves every workstation with the message database and the audit chain.',
   },
   { key: 'ws1', kind: 'client', code: 'WS-01', name: 'Watch Officer workstation', detail: 'Watch floor.' },
-  { key: 'ws2', kind: 'client', code: 'WS-02', name: 'Traffic desk workstation', detail: 'Traffic office.' },
-  { key: 'ws3', kind: 'client', code: 'WS-03', name: 'Drafting workstation', detail: 'Drafting desk.' },
+  { key: 'ws2', kind: 'client', code: 'WS-02', name: 'Commanding Officer workstation', detail: 'Commanding Officer.' },
+  { key: 'ws3', kind: 'client', code: 'WS-03', name: 'Radio workstation', detail: 'Radio room.' },
 ];
 
 export const WORKSTATION_LINKS = [
