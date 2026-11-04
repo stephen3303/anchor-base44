@@ -17,7 +17,7 @@ import {
  * On reconnect it asks the external server for the whole deferred backlog, ingests
  * it, and then starts pushing the held releases for transmit.
  *
- * Actions: status, heartbeat, connect, disconnect, tick, receive, drain, reset.
+ * Actions: status, heartbeat, connect, disconnect, tick, receive, forward, drain, reset.
  */
 
 const SERVER = LOCAL;
@@ -59,17 +59,27 @@ const beatLink = async (base44) => {
   return { ok: true, server: updated, online: updated.online !== false, peer_ok: peerOk, latency };
 };
 
+/** The ANCHOR server can hand traffic on to a workstation only over a link that is up. */
+const workstationReachable = async (base44) => {
+  const { items } = await base44.asServiceRole.entities.NetworkLink.list({ limit: 20 });
+  return (items || []).some((link) => link.state === "up");
+};
+
 /** Record messages as received and held on the command server. */
 const ingest = async (base44, ids) => {
   const unique = [...new Set((ids || []).filter(Boolean))];
   if (!unique.length) return 0;
   const { items } = await base44.asServiceRole.entities.SimMessage.filter({ id: { $in: unique } }, { limit: 200 });
   const at = nowIso();
+  // Traffic moves one hop at a time: it passes straight on to the workstations when one can
+  // take it, and otherwise waits here — the last node it could reach — until a link is back.
+  const reachable = await workstationReachable(base44);
   const patches = (items || []).map((message) => ({
     id: message.id,
     status: "ingested",
     ingested_at: at,
     dispatched_at: message.dispatched_at || at,
+    delivered_at: reachable ? at : "",
     last_error: "",
   }));
   if (!patches.length) return 0;
@@ -86,6 +96,23 @@ const ingestInbound = async (base44, body) => {
   const row = await ensureServer(base44, SERVER);
   await patchServer(base44, SERVER, { received: (row.received || 0) + 1, note: "Message ingested" });
   return { ok: true, ingested, at: nowIso() };
+};
+
+/** Hand everything waiting here to a workstation as soon as one can be reached. */
+const forwardWaiting = async (base44) => {
+  const { items } = await base44.asServiceRole.entities.SimMessage.filter(
+    { status: "ingested", delivered_at: "" },
+    { limit: 200 },
+  );
+  const waiting = (items || []).length;
+  if (!waiting) return { ok: true, forwarded: 0, waiting: 0 };
+  if (!(await workstationReachable(base44))) return { ok: true, forwarded: 0, waiting };
+
+  const at = nowIso();
+  await base44.asServiceRole.entities.SimMessage.bulkUpdate(
+    (items || []).map((message) => ({ id: message.id, delivered_at: at })),
+  );
+  return { ok: true, forwarded: waiting, waiting: 0, at };
 };
 
 /** Everything the external server held while this server was away. */
@@ -173,9 +200,10 @@ const reconnect = async (base44, body, user) => {
   }
 
   const backlog = await pullBacklog(base44);
+  const forwarded = await forwardWaiting(base44);
   const queued = await queueReleased(base44);
   const pushed = await pushHeld(base44);
-  return { ...beat, ok: true, backlog, queued, pushed };
+  return { ...beat, ok: true, backlog, forwarded, queued, pushed };
 };
 
 const disconnectLink = async (base44, body, user) => {
@@ -191,16 +219,18 @@ const disconnectLink = async (base44, body, user) => {
 /** Beat, hold anything newly released, and transmit it when the circuit is up. */
 const tickLocal = async (base44) => {
   const beat = await beatLink(base44);
+  const forwarded = await forwardWaiting(base44);
   const queued = await queueReleased(base44);
-  if (!beat.online) return { ...beat, queued, pushed: 0, held: true };
+  if (!beat.online) return { ...beat, forwarded, queued, pushed: 0, held: true };
   const pushed = await pushHeld(base44);
-  return { ...beat, queued, pushed };
+  return { ...beat, forwarded, queued, pushed };
 };
 
 const drain = async (base44) => {
+  const forwarded = await forwardWaiting(base44);
   const queued = await queueReleased(base44);
   const pushed = await pushHeld(base44);
-  return { ok: true, queued, pushed };
+  return { ok: true, forwarded, queued, pushed };
 };
 
 const clearQueue = async (base44) => {
@@ -230,6 +260,7 @@ export default async function (req) {
     if (action === "connect") return Response.json(await reconnect(base44, body, user));
     if (action === "disconnect") return Response.json(await disconnectLink(base44, body, user));
     if (action === "tick") return Response.json(await tickLocal(base44));
+    if (action === "forward") return Response.json(await forwardWaiting(base44));
     if (action === "drain") return Response.json(await drain(base44));
     if (action === "reset") return Response.json(await clearQueue(base44));
 

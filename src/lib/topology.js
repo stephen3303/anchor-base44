@@ -75,6 +75,10 @@ export const deriveTopology = ({ rows, servers, external, circuit, traffic }) =>
   const queued = traffic?.queued || 0;
   const deferred = traffic?.deferred || 0;
   const ingested = traffic?.ingested || 0;
+  // What the ANCHOR server still holds for want of a reachable workstation, and what it
+  // has already passed on.
+  const awaiting = traffic?.awaiting || 0;
+  const delivered = traffic?.delivered || 0;
   const held = traffic?.held || 0;
   const transmitted = traffic?.transmitted || 0;
   // Everything still sitting in the C2OIX repository, awaiting delivery to this command.
@@ -119,7 +123,9 @@ export const deriveTopology = ({ rows, servers, external, circuit, traffic }) =>
       statusLabel: 'Online',
       statusNote: '',
       pipes: {
-        inbound: { waiting: 0, processed: ingested, live: circuitUp },
+        // What arrived over the circuit waits here until a workstation can take it, so a
+        // message stops at this server whenever no workstation link is up.
+        inbound: { waiting: awaiting, processed: delivered, live: true },
         outbound: { waiting: held, processed: transmitted, live: circuitUp },
       },
       facts: [
@@ -145,7 +151,7 @@ export const deriveTopology = ({ rows, servers, external, circuit, traffic }) =>
       pipes: {
         // The ANCHOR server can only hand traffic to a workstation it can reach. Cut off,
         // the workstation receives nothing, so it counts none of the command's traffic.
-        inbound: { waiting: 0, processed: linkUp ? ingested : 0, live: linkUp },
+        inbound: { waiting: 0, processed: linkUp ? delivered : 0, live: linkUp },
         outbound: { waiting: 0, processed: 0, live: linkUp },
       },
       facts: [

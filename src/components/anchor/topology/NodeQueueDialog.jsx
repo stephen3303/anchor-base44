@@ -17,8 +17,8 @@ const COPY = {
   anchor: {
     title: 'ANCHOR message queue',
     description:
-      'Released messages the local server is holding for transmit. The circuit takes them in turn, and nothing is lost while it is down.',
-    empty: 'The local server is holding nothing for transmit.',
+      'What the local server is holding: traffic received for a workstation that cannot take it yet, and released messages waiting for the circuit.',
+    empty: 'The local server is holding nothing.',
   },
 };
 
@@ -41,12 +41,16 @@ export default function NodeQueueDialog({ nodeKey, open, onOpenChange }) {
         setMessages(items || []);
         setTransmissions([]);
       } else {
-        const { items } = await base44.entities.SimTransmission.filter(
-          { status: 'held' },
-          { sort: '-created_date', limit: 100 },
-        );
-        setTransmissions(items || []);
-        setMessages([]);
+        const [{ items: held }, { items: inbound }] = await Promise.all([
+          base44.entities.SimTransmission.filter({ status: 'held' }, { sort: '-created_date', limit: 100 }),
+          // Traffic that reached the ANCHOR server and is still waiting for a workstation.
+          base44.entities.SimMessage.filter(
+            { status: 'ingested', delivered_at: '' },
+            { sort: 'sequence', limit: 100 },
+          ),
+        ]);
+        setTransmissions(held || []);
+        setMessages(inbound || []);
       }
     } finally {
       setReading(false);
@@ -57,7 +61,7 @@ export default function NodeQueueDialog({ nodeKey, open, onOpenChange }) {
     if (open) read();
   }, [open, read]);
 
-  const queued = nodeKey === 'c2oix' ? messages : transmissions;
+  const queued = [...messages, ...transmissions];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,13 +95,27 @@ export default function NodeQueueDialog({ nodeKey, open, onOpenChange }) {
           </p>
         )}
 
-        {!reading &&
-          queued.length > 0 &&
-          (nodeKey === 'c2oix' ? (
-            <RepositoryTable messages={messages} />
-          ) : (
-            <TransmissionTable transmissions={transmissions} />
-          ))}
+        {!reading && nodeKey === 'c2oix' && messages.length > 0 && <RepositoryTable messages={messages} />}
+
+        {!reading && nodeKey === 'anchor' && messages.length > 0 && (
+          <div>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-navy-800">
+              Waiting for a workstation
+            </p>
+            <div className="mt-1.5">
+              <RepositoryTable messages={messages} />
+            </div>
+          </div>
+        )}
+
+        {!reading && nodeKey === 'anchor' && transmissions.length > 0 && (
+          <div>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-navy-800">Held for transmit</p>
+            <div className="mt-1.5">
+              <TransmissionTable transmissions={transmissions} />
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -14,8 +14,9 @@ const TONE_LABEL = {
 
 /** What the command shows, given the state of the links in the diagram above. */
 export default function ReportedEffects({ topology }) {
-  const { circuitUp, down } = topology;
+  const { circuitUp, down, links } = topology;
   const lost = down.map((link) => link.label.replace(' link', '')).join(', ');
+  const noWorkstation = links.length > 0 && down.length === links.length;
 
   const rows = [
     {
@@ -45,6 +46,13 @@ export default function ReportedEffects({ topology }) {
       what: down.length
         ? `${lost} cannot reach the ANCHOR server, so those workstations receive no message traffic from it: they show the server-unavailable banner and hold their work locally.`
         : 'No workstation is reporting a lost link to the ANCHOR server.',
+    },
+    {
+      where: 'Inbound traffic',
+      tone: noWorkstation ? 'attention' : 'up',
+      what: noWorkstation
+        ? 'Nothing can take traffic past the ANCHOR server, so received messages wait there — the last node they could reach — until a workstation link is restored.'
+        : 'Received traffic passes the ANCHOR server straight on to the workstations that can be reached, and stops there.',
     },
     {
       where: 'Release queue',

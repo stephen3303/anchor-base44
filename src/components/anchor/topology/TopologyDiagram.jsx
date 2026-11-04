@@ -42,10 +42,10 @@ export default function TopologyDiagram({ topology, busy, onToggleCircuit, onTog
       <p className="mt-4 max-w-[560px] text-center text-[11px] leading-relaxed text-mutedink">
         Every node carries two pipes: inbound traffic coming into the command through it, and outbound traffic it sends
         away. Waiting is what that node holds right now; processed is the running total since the simulators were reset.
-        Traffic bound for this command waits at C2OIX until the circuit can carry it; what the command releases is
-        delivered the moment it is transmitted, so nothing waits outbound there. A pipe greys out while its link is down:
-        a workstation cut off from the ANCHOR server receives nothing from it, so it counts no processed traffic until
-        the link is restored.
+        Traffic moves one node at a time: C2OIX holds what the circuit has not carried, the ANCHOR server passes what it
+        receives straight on to the workstations, and anything a node cannot pass on waits there — with no workstation
+        reachable, a released message waits at the ANCHOR server until a link is restored, then goes on. A pipe greys out
+        while the link that carries it is down.
       </p>
     </div>
   );

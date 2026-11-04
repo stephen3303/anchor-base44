@@ -80,11 +80,13 @@ export default function NetworkTopology() {
           ? 'Connection restored from the network topology demonstration.'
           : 'Connection broken from the network topology demonstration.',
       );
+      // With a workstation reachable again, whatever waited at the ANCHOR server goes on.
+      if (up && drivesSimulators) await localServer('forward');
       toast({
         title: up ? `${link.label} restored` : `${link.label} broken`,
         description: up
-          ? 'That workstation reaches the ANCHOR server again.'
-          : 'That workstation now reports the ANCHOR server unreachable.',
+          ? 'That workstation reaches the ANCHOR server again, and takes the traffic that was waiting there.'
+          : 'That workstation now reports the ANCHOR server unreachable; traffic for it waits at the ANCHOR server.',
       });
     } catch (error) {
       toast({ title: 'Could not report the link', description: 'The command server did not answer. Try again.' });
@@ -103,7 +105,9 @@ export default function NetworkTopology() {
       } else if (result?.released) {
         toast({
           title: `Released ${result.message?.reference || 'one message'}`,
-          description: `Ingested by the ANCHOR server. ${result.counts?.queued || 0} still queued at C2OIX.`,
+          description: reachable
+            ? `Passed through the ANCHOR server to the workstations. ${result.counts?.queued || 0} still queued at C2OIX.`
+            : `Waiting at the ANCHOR server: no workstation can take it. ${result.counts?.queued || 0} still queued at C2OIX.`,
         });
       } else if (result?.deferred) {
         toast({
@@ -131,6 +135,7 @@ export default function NetworkTopology() {
         }
       }
       await restoreAll();
+      if (drivesSimulators) await localServer('forward');
       toast({
         title: 'All connections restored',
         description: 'The command reports both servers and all three workstations up.',

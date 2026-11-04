@@ -15,18 +15,29 @@ export default function useTopology() {
   const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
-    const [linkRows, { items: serverRows }, queued, deferred, ingested, held, transmitted] = await Promise.all([
-      loadWorkstationLinks(),
-      base44.entities.SimServer.list({ limit: 10 }),
-      base44.entities.SimMessage.count({ status: 'queued' }),
-      base44.entities.SimMessage.count({ status: 'deferred' }),
-      base44.entities.SimMessage.count({ status: 'ingested' }),
-      base44.entities.SimTransmission.count({ status: 'held' }),
-      base44.entities.SimTransmission.count({ status: 'transmitted' }),
-    ]);
+    const [linkRows, { items: serverRows }, queued, deferred, ingested, awaiting, held, transmitted] =
+      await Promise.all([
+        loadWorkstationLinks(),
+        base44.entities.SimServer.list({ limit: 10 }),
+        base44.entities.SimMessage.count({ status: 'queued' }),
+        base44.entities.SimMessage.count({ status: 'deferred' }),
+        base44.entities.SimMessage.count({ status: 'ingested' }),
+        base44.entities.SimMessage.count({ status: 'ingested', delivered_at: '' }),
+        base44.entities.SimTransmission.count({ status: 'held' }),
+        base44.entities.SimTransmission.count({ status: 'transmitted' }),
+      ]);
     setRows(linkRows);
     setServers(Object.fromEntries((serverRows || []).map((row) => [row.server, row])));
-    setTraffic({ queued, deferred, ingested, held, transmitted });
+    // `awaiting` is what the ANCHOR server still holds because no workstation can take it.
+    setTraffic({
+      queued,
+      deferred,
+      ingested,
+      awaiting,
+      delivered: Math.max(ingested - awaiting, 0),
+      held,
+      transmitted,
+    });
   }, []);
 
   useEffect(() => {
