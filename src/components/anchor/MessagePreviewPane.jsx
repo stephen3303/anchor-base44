@@ -65,7 +65,7 @@ export default function MessagePreviewPane({ message, onClose }) {
             </button>
           )}
         </div>
-        <h2 className="mt-2 text-[15px] font-semibold leading-snug text-ink">{message.subject}</h2>
+        <h2 className="normal-case mt-2 text-[15px] font-semibold leading-snug text-ink">{message.subject}</h2>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 anchor-scroll">
@@ -96,7 +96,7 @@ export default function MessagePreviewPane({ message, onClose }) {
           </p>
           {message.sections.map((section) => (
             <div key={section.heading} className="mb-3.5 last:mb-0">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink">{section.heading}</h3>
+              <h3 className="normal-case text-[12px] font-semibold tracking-[0.08em] text-ink">{section.heading}</h3>
               <p className="official-text mt-1 font-mono text-[13px] text-ink">{section.body}</p>
             </div>
           ))}

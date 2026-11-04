@@ -91,7 +91,7 @@ export default function Home() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mutedink">Watch Officer dashboard</p>
-          <h1 className="mt-1 font-heading text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">
+          <h1 className="normal-case mt-1 font-heading text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">
             {greetingFor(moment.utc().hour())}, {identity.full_name}
           </h1>
           <p className="mt-1 text-[13px] text-mutedink">

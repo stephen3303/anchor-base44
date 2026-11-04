@@ -30,7 +30,7 @@ export default function IntegrityPanel({ events }) {
     <div className="rounded-md border border-line bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-navy-800" aria-hidden="true" />
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink">Integrity check</h2>
+        <h2 className="text-[12px] font-semibold tracking-[0.14em] text-ink">Integrity check</h2>
         <Button
           size="sm"
           variant="outline"

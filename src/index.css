@@ -76,8 +76,11 @@
     @apply bg-background text-foreground font-body antialiased;
   }
 
+  /* Titles read in Title Case app-wide. Official message text that must keep the
+     case it was received in opts out with the normal-case utility. */
   h1, h2, h3, h4 {
     @apply font-heading;
+    text-transform: capitalize;
   }
 }
 

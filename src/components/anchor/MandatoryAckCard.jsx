@@ -21,7 +21,7 @@ export default function MandatoryAckCard({ message, onAcknowledge }) {
         <Countdown due={message.ack_due} className="ml-auto" />
       </div>
 
-      <h3 className="mt-2 text-[14.5px] font-semibold leading-snug text-ink">{message.subject}</h3>
+      <h3 className="normal-case mt-2 text-[14.5px] font-semibold leading-snug text-ink">{message.subject}</h3>
       <p className="mt-1 text-[11.5px] text-mutedink">
         {message.originator} · acknowledgement due {formatZulu(message.ack_due)}
         {message.alert_rule ? ` · ${message.alert_rule}` : ''}

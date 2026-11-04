@@ -29,7 +29,7 @@ const sourceOf = (d) => SAMPLE_MESSAGES.find((m) => m.id === d.derived_from_mess
 const Panel = ({ title, hint, children }) => (
   <section className="rounded-md border border-line bg-white shadow-sm">
     <header className="border-b border-line px-4 py-2.5">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">{title}</h2>
+      <h2 className="text-[11px] font-semibold tracking-[0.16em] text-mutedink">{title}</h2>
       {hint && <p className="mt-1 text-[11.5px] leading-snug text-mutedink">{hint}</p>}
     </header>
     <div className="p-4">{children}</div>
@@ -432,7 +432,7 @@ export default function DraftWorkspace() {
             </span>
           )}
         </div>
-        <h1 className="mt-2 font-heading text-[22px] font-semibold leading-tight tracking-tight text-ink sm:text-[25px]">
+        <h1 className="normal-case mt-2 font-heading text-[22px] font-semibold leading-tight tracking-tight text-ink sm:text-[25px]">
           {draft.subject || 'Untitled draft'}
         </h1>
       </header>

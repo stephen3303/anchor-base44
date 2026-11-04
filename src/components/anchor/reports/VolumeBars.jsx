@@ -10,7 +10,7 @@ export default function VolumeBars({ title, hint, items }) {
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink">{title}</h3>
+        <h3 className="text-[12px] font-semibold tracking-[0.14em] text-ink">{title}</h3>
         {hint && <p className="text-[11px] text-mutedink">{hint}</p>}
       </div>
       <ul className="mt-2.5 space-y-2">

@@ -48,7 +48,7 @@ export default function TemplateEvaluation({ message, templates, user }) {
   return (
     <section className="mt-4 rounded-sm border border-line bg-secondary/40 px-3 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mutedink">Template check</h2>
+        <h2 className="text-[10.5px] font-semibold tracking-[0.14em] text-mutedink">Template check</h2>
         {template && (
           <span className="text-[12px] font-semibold text-ink">{template.name}</span>
         )}

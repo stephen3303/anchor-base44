@@ -73,7 +73,7 @@ export default function DraftNew() {
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">From a template</h2>
+        <h2 className="text-[11px] font-semibold tracking-[0.16em] text-mutedink">From a template</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {templates.map((template) => (
             <button
@@ -120,7 +120,7 @@ export default function DraftNew() {
       <NewTemplateDialog open={templateOpen} onOpenChange={setTemplateOpen} onCreated={loadTemplates} />
 
       <section className="space-y-3">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">
+        <h2 className="text-[11px] font-semibold tracking-[0.16em] text-mutedink">
           From an existing message
         </h2>
         <div className="relative max-w-md">

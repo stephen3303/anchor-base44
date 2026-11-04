@@ -19,13 +19,13 @@ export default function TurnoverPackage({ turnover, traffic, actions, pendingAck
       </dl>
 
       <div>
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mutedink">Situation</h3>
+        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-mutedink">Situation</h3>
         <p className="official-text mt-1 text-[12.5px] text-ink">{turnover.situation || 'Not recorded.'}</p>
       </div>
 
       {turnover.ongoing_topics?.length > 0 && (
         <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mutedink">Ongoing topics</h3>
+          <h3 className="text-[11px] font-semibold tracking-[0.14em] text-mutedink">Ongoing topics</h3>
           <ul className="mt-1 space-y-0.5 text-[12.5px] text-ink">
             {turnover.ongoing_topics.map((topic) => (
               <li key={topic}>• {topic}</li>
@@ -36,14 +36,14 @@ export default function TurnoverPackage({ turnover, traffic, actions, pendingAck
 
       {turnover.watch_notes && (
         <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mutedink">Watch notes</h3>
+          <h3 className="text-[11px] font-semibold tracking-[0.14em] text-mutedink">Watch notes</h3>
           <p className="official-text mt-1 text-[12.5px] text-ink">{turnover.watch_notes}</p>
         </div>
       )}
 
       {turnover.checklist?.length > 0 && (
         <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mutedink">Handover checklist</h3>
+          <h3 className="text-[11px] font-semibold tracking-[0.14em] text-mutedink">Handover checklist</h3>
           <ul className="mt-1 space-y-0.5 text-[12.5px] text-ink">
             {turnover.checklist.map((item, index) => (
               <li key={`${item.label}-${index}`}>
@@ -55,7 +55,7 @@ export default function TurnoverPackage({ turnover, traffic, actions, pendingAck
       )}
 
       <div className="border-t border-line pt-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mutedink">
+        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-mutedink">
           High-priority traffic since the watch began
         </h3>
         {traffic.length === 0 ? (
@@ -78,7 +78,7 @@ export default function TurnoverPackage({ turnover, traffic, actions, pendingAck
       </div>
 
       <div className="border-t border-line pt-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mutedink">Carried forward</h3>
+        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-mutedink">Carried forward</h3>
         <p className="mt-1 text-[12.5px] text-ink">
           {actions.length} open action item{actions.length === 1 ? '' : 's'} · {pendingAcks} mandatory acknowledgement
           {pendingAcks === 1 ? '' : 's'} outstanding

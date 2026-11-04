@@ -20,7 +20,7 @@ export default function MessageOriginalText({ message }) {
   return (
     <section className="border-t border-line px-4 py-4 sm:px-6">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">
+        <h2 className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.16em] text-mutedink">
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           Complete original message
         </h2>

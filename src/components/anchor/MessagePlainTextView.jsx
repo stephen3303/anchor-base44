@@ -20,7 +20,7 @@ export default function MessagePlainTextView({ message }) {
   return (
     <section className="rounded-md border border-line bg-white shadow-sm">
       <header className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 sm:px-6">
-        <h2 className="font-heading text-[12px] font-semibold uppercase tracking-[0.16em] text-navy-800">
+        <h2 className="font-heading text-[12px] font-semibold tracking-[0.16em] text-navy-800">
           Plain text — as received
         </h2>
         <span className="anchor-mono text-[11px] text-mutedink">{message.reference}</span>

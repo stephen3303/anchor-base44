@@ -58,7 +58,7 @@ export default function DraftPreview({ draft, settings }) {
     <section className="rounded-md border border-line bg-white shadow-sm">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">Message as it will transmit</h3>
+          <h3 className="text-[11px] font-semibold tracking-[0.16em] text-mutedink">Message as it will transmit</h3>
           <p className="anchor-mono mt-0.5 text-[10.5px] text-mutedink">
             {draft.released_at
               ? `DTG ${draft.dtg} · MSN ${draft.msn} · ${draft.local_sequence}`
