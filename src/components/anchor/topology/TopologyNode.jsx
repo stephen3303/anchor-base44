@@ -69,7 +69,7 @@ export default function TopologyNode({ node, busy, onShowQueue, onRelease }) {
           {onRelease && (
             <Button size="sm" className="h-7 w-full gap-1.5 px-2 text-[11px]" onClick={onRelease} disabled={busy}>
               <Send className="h-3.5 w-3.5" aria-hidden="true" />
-              Release next message
+              Send Next Message
             </Button>
           )}
 

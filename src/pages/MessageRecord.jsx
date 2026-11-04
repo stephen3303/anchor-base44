@@ -10,6 +10,7 @@ import LifecycleBadge from '@/components/anchor/LifecycleBadge';
 import { useAuth } from '@/lib/AuthContext';
 import { recordAudit } from '@/lib/audit';
 import { SAMPLE_MESSAGES, formatZulu, messageByReference } from '@/data/anchorSampleData';
+import useInboundMessages from '@/hooks/useInboundMessages';
 import { EFFECT_LABEL } from '@/lib/drafting';
 import MessageActionBar from '@/components/anchor/MessageActionBar';
 import TemplateEvaluation from '@/components/anchor/templates/TemplateEvaluation';
@@ -36,10 +37,12 @@ export default function MessageRecord() {
   const { id } = useParams();
   const { user } = useAuth();
   const { templates } = useTemplates();
+  const { messages: inbound } = useInboundMessages();
   const [superseding, setSuperseding] = useState([]);
   const [view, setView] = useState('record');
 
-  const message = SAMPLE_MESSAGES.find((m) => m.id === id) || null;
+  // Traffic received from C2OIX opens here too, beside the command's own set.
+  const message = SAMPLE_MESSAGES.find((m) => m.id === id) || inbound.find((m) => m.id === id) || null;
 
   const print = async () => {
     await recordAudit({
@@ -231,14 +234,16 @@ export default function MessageRecord() {
           </div>
         )}
 
-        <div className="anchor-ai-panel border-t border-line bg-ai/5 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm border border-ai/40 bg-ai/10 px-1.5 py-[2px] text-[9.5px] font-semibold uppercase tracking-[0.1em] text-ai">
-              AI-generated summary — not authoritative
-            </span>
+        {message.ai_summary && (
+          <div className="anchor-ai-panel border-t border-line bg-ai/5 px-4 py-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <span className="rounded-sm border border-ai/40 bg-ai/10 px-1.5 py-[2px] text-[9.5px] font-semibold uppercase tracking-[0.1em] text-ai">
+                AI-generated summary — not authoritative
+              </span>
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink">{message.ai_summary}</p>
           </div>
-          <p className="mt-2 text-[13px] leading-relaxed text-ink">{message.ai_summary}</p>
-        </div>
+        )}
 
         <div className="border-t border-line px-4 py-4 sm:px-6">
           <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-mutedink">

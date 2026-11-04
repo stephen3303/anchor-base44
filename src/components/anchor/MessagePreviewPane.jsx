@@ -117,20 +117,24 @@ export default function MessagePreviewPane({ message, onClose }) {
         )}
 
         {/* AI summary: own panel, labelled, below official text, excluded from print and snippets. */}
-        <div className="anchor-ai-panel mt-4 rounded-md border border-dashed border-ai/55 bg-ai/[0.04] px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ai">
-            <FileSearch className="h-3.5 w-3.5" aria-hidden="true" />
-            AI-generated summary — not authoritative
-          </p>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink">{message.ai_summary}</p>
-        </div>
+        {message.ai_summary && (
+          <div className="anchor-ai-panel mt-4 rounded-md border border-dashed border-ai/55 bg-ai/[0.04] px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ai">
+              <FileSearch className="h-3.5 w-3.5" aria-hidden="true" />
+              AI-generated summary — not authoritative
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink">{message.ai_summary}</p>
+          </div>
+        )}
 
         <dl className="mt-4 border-t border-line pt-3">
           <MetaRow label="C2OIX">
             <span className="anchor-mono text-[11.5px]">{message.c2oix_id}</span>
           </MetaRow>
           <MetaRow label="SHA-256">
-            <span className="anchor-mono break-all text-[10.5px]">{message.sha256.slice(0, 32)}…</span>
+            <span className="anchor-mono break-all text-[10.5px]">
+              {message.sha256 ? `${message.sha256.slice(0, 32)}…` : 'not held for this record'}
+            </span>
           </MetaRow>
           <MetaRow label="Size">
             <span className="anchor-mono text-[11.5px]">

@@ -7,6 +7,7 @@ import MessageTable from '@/components/anchor/MessageTable';
 import MessagePreviewPane from '@/components/anchor/MessagePreviewPane';
 import { useAuth } from '@/lib/AuthContext';
 import useMessageStates from '@/hooks/useMessageStates';
+import useInboundMessages from '@/hooks/useInboundMessages';
 import { recordAudit } from '@/lib/audit';
 import { SAMPLE_MESSAGES } from '@/data/anchorSampleData';
 
@@ -43,6 +44,7 @@ export default function Messages() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { markRead, toggleStar: persistStar, byMessageId, states } = useMessageStates(user);
+  const { messages: inbound, workstation, link } = useInboundMessages();
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState(null);
@@ -52,9 +54,11 @@ export default function Messages() {
 
   // Read and star state is held per user, so a report can tell "acknowledged"
   // apart from "merely read".
+  // Traffic received from C2OIX sits at the top of the inbox, newest arrival first;
+  // the command's own set follows.
   const rows = useMemo(
     () =>
-      SAMPLE_MESSAGES.map((message) => {
+      [...inbound, ...SAMPLE_MESSAGES].map((message) => {
         const state = byMessageId(message.id);
         return {
           ...message,
@@ -62,7 +66,7 @@ export default function Messages() {
           starred: Boolean(state?.starred),
         };
       }),
-    [byMessageId, states],
+    [byMessageId, states, inbound],
   );
 
   const filtered = useMemo(() => rows.filter((m) => matches(m, filters)), [rows, filters]);
@@ -149,6 +153,22 @@ export default function Messages() {
         </div>
         <p className="text-[11px] text-mutedink">j / k to walk the list · Enter opens the record · Esc closes the preview</p>
       </header>
+
+      <p
+        className={
+          link.state === 'down'
+            ? 'rounded-sm border border-lifecycle-cancelled/40 bg-lifecycle-cancelled/5 px-3 py-2 text-[11.5px] text-lifecycle-cancelled'
+            : 'text-[11.5px] text-mutedink'
+        }
+      >
+        Read at {workstation.code} · {workstation.label} ·{' '}
+        {inbound.length === 0
+          ? 'nothing has been received from C2OIX yet'
+          : `${inbound.length} ${inbound.length === 1 ? 'message' : 'messages'} received from C2OIX`}
+        {link.state === 'down'
+          ? ' — this workstation is cut off from the ANCHOR server, so nothing new arrives here. Traffic received since the break is held by the server and appears when the link is restored.'
+          : ''}
+      </p>
 
       <MessageFilters value={filters} onChange={setFilters} />
 
