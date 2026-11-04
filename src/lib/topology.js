@@ -132,20 +132,24 @@ export const deriveTopology = ({ rows, servers, external, circuit, traffic }) =>
   };
 
   links.forEach((link) => {
+    const linkUp = link.state === 'up';
     nodes[link.to] = {
       ...nodeByKey(link.to),
-      status: link.state === 'up' ? 'up' : link.state === 'unknown' ? 'unknown' : 'down',
-      statusLabel: link.state === 'up' ? 'Connected' : link.state === 'unknown' ? 'Unknown' : 'Offline',
-      statusNote:
-        link.state === 'down'
-          ? 'This workstation cannot reach the ANCHOR server: it shows the server-unavailable banner and holds its work locally.'
-          : '',
+      status: linkUp ? 'up' : link.state === 'unknown' ? 'unknown' : 'down',
+      statusLabel: linkUp ? 'Connected' : link.state === 'unknown' ? 'Unknown' : 'Offline',
+      statusNote: linkUp
+        ? ''
+        : link.state === 'down'
+          ? 'This workstation cannot reach the ANCHOR server, so it receives nothing from it: it shows the server-unavailable banner and holds its work locally.'
+          : 'No reading yet, so what this workstation is receiving is not known.',
       pipes: {
-        inbound: { waiting: 0, processed: ingested, live: link.state === 'up' },
-        outbound: { waiting: 0, processed: 0, live: link.state === 'up' },
+        // The ANCHOR server can only hand traffic to a workstation it can reach. Cut off,
+        // the workstation receives nothing, so it counts none of the command's traffic.
+        inbound: { waiting: 0, processed: linkUp ? ingested : 0, live: linkUp },
+        outbound: { waiting: 0, processed: 0, live: linkUp },
       },
       facts: [
-        { label: 'Reaches ANCHOR', value: link.state === 'up' ? 'yes' : 'no' },
+        { label: 'Reaches ANCHOR', value: linkUp ? 'yes' : 'no' },
         { label: 'State reported', value: link.reportedAt || '—' },
       ],
     };

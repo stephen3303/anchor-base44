@@ -43,7 +43,7 @@ export default function ReportedEffects({ topology }) {
       where: 'Workstation banner',
       tone: down.length ? 'error' : 'up',
       what: down.length
-        ? `${lost} cannot reach the ANCHOR server, so those workstations show the server-unavailable banner and hold their work locally.`
+        ? `${lost} cannot reach the ANCHOR server, so those workstations receive no message traffic from it: they show the server-unavailable banner and hold their work locally.`
         : 'No workstation is reporting a lost link to the ANCHOR server.',
     },
     {
